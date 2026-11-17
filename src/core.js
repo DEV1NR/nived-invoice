@@ -4,6 +4,8 @@ export const PRESETS = [
   { key: 'maintenance', desc: 'Maintenance', detail: 'monthly', price: 500000 },
   { key: 'design', desc: 'Design', detail: 'landing page', price: 3500000 },
   { key: 'reviewcard', desc: 'Review Card', detail: '', price: 150000 },
+  { key: 'grow', desc: 'Grow Package Plan', detail: '', price: 0 },
+  { key: 'bloom', desc: 'Bloom Package Plan', detail: '', price: 0 },
 ];
 
 export function formatIDR(n) {

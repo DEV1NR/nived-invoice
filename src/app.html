@@ -30,6 +30,7 @@ button{font:inherit;cursor:pointer;border-radius:6px}
 .chip{border:1px solid #d9d9d9;background:#fff;padding:6px 10px;font-size:13px}
 .chip:hover{border-color:var(--ink)}
 .chip::before{content:'+ ';color:var(--blue)}
+.chip.custom{border-style:dashed}
 .line{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;position:relative}
 .line .row{margin-bottom:6px}
 .line .row.q{grid-template-columns:70px 1fr}
@@ -44,7 +45,7 @@ input.bad{border-color:#c0392b;background:#fdf1ef}
 .hint{font-family:var(--mono);font-size:11px;color:var(--muted);margin:8px 0 0}
 details{border-top:1px solid var(--line);padding-top:14px;margin-top:22px}
 summary{cursor:pointer;font-weight:500;margin-bottom:12px}
-.preset-set{display:grid;grid-template-columns:90px 1fr 110px;gap:6px;align-items:center;margin-bottom:6px;font-size:12px}
+.preset-set{display:grid;grid-template-columns:120px 1fr 110px;gap:6px;align-items:center;margin-bottom:6px;font-size:12px}
 .preset-set input{padding:6px 8px;font-size:13px}
 .main{padding:32px;display:flex;justify-content:center;align-items:flex-start}
 .stage{width:794px;transform-origin:top left}
@@ -113,7 +114,6 @@ table.iv th.n{font-size:11px}
       <legend>items</legend>
       <div class="presets" id="presets"></div>
       <div id="lines"></div>
-      <button class="ghost" id="addBlank" type="button">+ Blank line</button>
     </fieldset>
 
     <fieldset>
@@ -229,6 +229,16 @@ table.iv th.n{font-size:11px}
     $('presetSettings').appendChild(row);
   });
 
+  const customBtn = document.createElement('button');
+  customBtn.type = 'button'; customBtn.className = 'chip custom'; customBtn.textContent = 'Custom';
+  customBtn.addEventListener('click', () => {
+    addLine({ desc: '', detail: '', qty: '1', price: '' });
+    const boxes = $('lines').querySelectorAll('.line');
+    const first = boxes[boxes.length - 1] && boxes[boxes.length - 1].querySelector('input');
+    if (first) first.focus();
+  });
+  $('presets').appendChild(customBtn);
+
   ['bankName', 'bankAcc', 'bankHolder', 'prefix'].forEach(k => {
     $(k).value = store.settings[k];
     $(k).addEventListener('input', () => { store.settings[k] = $(k).value; save(); if (k === 'prefix') refreshNumber(); render(); });
@@ -311,7 +321,6 @@ table.iv th.n{font-size:11px}
     render();
   });
   $('due').addEventListener('input', () => { state.dueTouched = true; render(); });
-  $('addBlank').addEventListener('click', () => addLine({ desc: '', detail: '', qty: '1', price: '' }));
 
   let printing = false;
   const originalTitle = document.title;

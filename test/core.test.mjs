@@ -59,7 +59,8 @@ test('pdf file name', () => {
 });
 
 test('presets', () => {
-  assert.equal(PRESETS.length, 5);
-  assert.deepEqual(PRESETS.map(p => p.desc), ['Hosting', 'Domain', 'Maintenance', 'Design', 'Review Card']);
+  assert.equal(PRESETS.length, 7);
+  assert.deepEqual(PRESETS.map(p => p.desc), ['Hosting', 'Domain', 'Maintenance', 'Design', 'Review Card', 'Grow Package Plan', 'Bloom Package Plan']);
+  assert.equal(new Set(PRESETS.map(p => p.key)).size, 7);
   assert.equal(PRESETS.find(p => p.desc === 'Design').price, 3500000);
 });
