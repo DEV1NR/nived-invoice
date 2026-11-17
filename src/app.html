@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nived invoice generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#141414;--muted:#8a8a8a;--line:#e6e6e6;--blue:#0B6BC4;--bg:#f4f3f0;--sans:'Bricolage Grotesque',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px}
+.app{display:grid;grid-template-columns:400px minmax(0,1fr);min-height:100vh}
+.side{background:#fff;border-right:1px solid var(--line);padding:24px 22px 40px;overflow-y:auto;max-height:100vh;position:sticky;top:0}
+.brand{font-size:22px;font-weight:700;letter-spacing:-0.03em;margin:0 0 2px}
+.brand span{color:var(--blue)}
+.sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0 0 22px}
+fieldset{border:0;padding:0;margin:0 0 22px}
+legend{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:lowercase;margin-bottom:8px;padding:0}
+label{display:block;font-size:12px;color:#555;margin:0 0 4px}
+input,textarea{width:100%;font:inherit;font-size:14px;color:var(--ink);background:#fff;border:1px solid #d9d9d9;border-radius:6px;padding:8px 10px;outline:none}
+input:focus,textarea:focus{border-color:var(--ink)}
+textarea{resize:vertical;min-height:58px}
+.row{display:grid;gap:10px;grid-template-columns:1fr 1fr;margin-bottom:10px}
+.field{margin-bottom:10px}
+.mono{font-family:var(--mono)}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+button{font:inherit;cursor:pointer;border-radius:6px}
+.chip{border:1px solid #d9d9d9;background:#fff;padding:6px 10px;font-size:13px}
+.chip:hover{border-color:var(--ink)}
+.chip::before{content:'+ ';color:var(--blue)}
+.line{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;position:relative}
+.line .row{margin-bottom:6px}
+.line .row.q{grid-template-columns:70px 1fr}
+.line input{padding:6px 8px;font-size:13px}
+.rm{position:absolute;top:6px;right:6px;border:0;background:none;color:var(--muted);font-size:16px;line-height:1;padding:4px}
+.rm:hover{color:#c0392b}
+.ghost{border:1px dashed #cfcfcf;background:none;width:100%;padding:8px;color:#555;font-size:13px}
+.ghost:hover{border-color:var(--ink);color:var(--ink)}
+.primary{width:100%;border:0;background:var(--ink);color:#fff;padding:12px;font-size:15px;font-weight:500;margin-top:4px}
+.primary:hover{background:#000}
+.hint{font-family:var(--mono);font-size:11px;color:var(--muted);margin:8px 0 0}
+details{border-top:1px solid var(--line);padding-top:14px;margin-top:22px}
+summary{cursor:pointer;font-weight:500;margin-bottom:12px}
+.preset-set{display:grid;grid-template-columns:90px 1fr 110px;gap:6px;align-items:center;margin-bottom:6px;font-size:12px}
+.preset-set input{padding:6px 8px;font-size:13px}
+.main{padding:32px;display:flex;justify-content:center;align-items:flex-start}
+.stage{width:794px;transform-origin:top left}
+#invoice{width:794px;min-height:1123px;background:#fff;color:var(--ink);padding:64px 64px 48px;display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(0,0,0,.06),0 8px 30px rgba(0,0,0,.06);font-family:var(--sans);font-size:14px;line-height:1.5}
+.iv-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px}
+.iv-mark{font-size:48px;font-weight:700;letter-spacing:-0.035em;line-height:1}
+.iv-mark span{color:var(--blue)}
+.iv-tag{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:10px}
+.iv-title{font-size:34px;font-weight:500;letter-spacing:-0.02em;line-height:1;text-align:right}
+.iv-no{font-family:var(--mono);font-size:13px;color:var(--blue);margin-top:10px;text-align:right}
+.iv-meta{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:20px;padding:18px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--line);margin-bottom:18px}
+.k{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:4px}
+.iv-client{font-weight:500;font-size:15px}
+.iv-addr{color:#666;font-size:13px;white-space:pre-line}
+.iv-date{font-family:var(--mono);font-size:13px}
+table.iv{width:100%;border-collapse:collapse}
+table.iv th{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:400;text-align:left;padding:0 0 8px}
+table.iv td{padding:11px 0;border-top:1px solid #eee;vertical-align:baseline}
+table.iv .n{text-align:right;font-family:var(--mono);font-size:13px;white-space:nowrap;padding-left:16px}
+table.iv th.n{font-size:11px}
+.det{color:var(--muted);font-size:13px;margin-left:6px}
+.empty td{color:var(--muted);text-align:center;padding:28px 0}
+.iv-foot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:18px;padding-top:18px;border-top:2px solid var(--ink)}
+.iv-bank{font-family:var(--mono);font-size:12px;color:#666;line-height:1.7;white-space:pre-line}
+.iv-total-k{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right}
+.iv-total{font-size:38px;font-weight:700;letter-spacing:-0.02em;line-height:1.1;text-align:right}
+.iv-notes{margin-top:28px;font-size:13px;color:#555;white-space:pre-line}
+.iv-spacer{flex:1}
+.iv-sign{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:40px}
+@media (max-width:1000px){.app{grid-template-columns:1fr}.side{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line)}.main{padding:16px;justify-content:flex-start}}
+@page { size: A4; margin: 0 }
+@media print{
+  html,body{background:#fff}
+  .side{display:none}
+  .app{display:block}
+  .main{padding:0;display:block}
+  .stage{transform:none!important;width:auto;height:auto!important}
+  #invoice{width:210mm;min-height:297mm;height:297mm;box-shadow:none;padding:17mm 17mm 13mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <p class="brand">nived<span>.</span> invoices</p>
+    <p class="sub">fill in · check preview · download</p>
+
+    <fieldset>
+      <legend>client</legend>
+      <div class="field"><label for="client">Client name</label><input id="client" placeholder="PT Kopi Senja" autocomplete="off"></div>
+      <div class="field"><label for="address">Address</label><textarea id="address" placeholder="Jl. Kemang Raya 12, Jakarta"></textarea></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>invoice</legend>
+      <div class="field"><label for="number">Invoice number</label><input id="number" class="mono" autocomplete="off"></div>
+      <div class="row">
+        <div><label for="issue">Issued</label><input id="issue" type="date"></div>
+        <div><label for="due">Due</label><input id="due" type="date"></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>items</legend>
+      <div class="presets" id="presets"></div>
+      <div id="lines"></div>
+      <button class="ghost" id="addBlank" type="button">+ Blank line</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>notes (optional)</legend>
+      <textarea id="notes" placeholder="Shown on the invoice only when filled in"></textarea>
+    </fieldset>
+
+    <button class="primary" id="download" type="button">Download PDF</button>
+    <p class="hint">In the print window, choose "Save as PDF". The number moves up by one afterwards.</p>
+
+    <details id="settings">
+      <summary>Settings</summary>
+      <fieldset>
+        <legend>preset items (detail · price)</legend>
+        <div id="presetSettings"></div>
+      </fieldset>
+      <fieldset>
+        <legend>bank transfer</legend>
+        <div class="field"><label for="bankName">Bank</label><input id="bankName"></div>
+        <div class="field"><label for="bankAcc">Account number</label><input id="bankAcc" class="mono" placeholder="123 456 7890"></div>
+        <div class="field"><label for="bankHolder">Account holder</label><input id="bankHolder"></div>
+      </fieldset>
+      <fieldset>
+        <legend>numbering</legend>
+        <div class="field"><label for="prefix">Invoice prefix</label><input id="prefix" class="mono"></div>
+      </fieldset>
+      <p class="hint">Saved in this browser only.</p>
+    </details>
+  </aside>
+
+  <main class="main">
+    <div class="stage" id="stage">
+      <article id="invoice">
+        <div class="iv-head">
+          <div><div class="iv-mark">nived<span>.</span></div><div class="iv-tag">design · build · research</div></div>
+          <div><div class="iv-title">Invoice</div><div class="iv-no" id="pNo"></div></div>
+        </div>
+        <div class="iv-meta">
+          <div><div class="k">Billed to</div><div class="iv-client" id="pClient"></div><div class="iv-addr" id="pAddr"></div></div>
+          <div><div class="k">Issued</div><div class="iv-date" id="pIssue"></div></div>
+          <div><div class="k">Due</div><div class="iv-date" id="pDue"></div></div>
+        </div>
+        <table class="iv">
+          <thead><tr><th>Item</th><th class="n">Qty</th><th class="n">Price</th><th class="n">Amount</th></tr></thead>
+          <tbody id="pLines"></tbody>
+        </table>
+        <div class="iv-foot">
+          <div class="iv-bank" id="pBank"></div>
+          <div><div class="iv-total-k">Total IDR</div><div class="iv-total" id="pTotal"></div></div>
+        </div>
+        <div class="iv-notes" id="pNotes"></div>
+        <div class="iv-spacer"></div>
+        <div class="iv-sign"><span>Curiosity first. Intention always.</span><span>nived.studio</span></div>
+      </article>
+    </div>
+  </main>
+</div>
+
+<!--CORE-->
+<script>
+(function () {
+  const C = globalThis.NivedCore;
+  const KEY = 'nived-invoice-v1';
+  const $ = id => document.getElementById(id);
+
+  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }
+
+  const stored = load();
+  const store = {
+    settings: Object.assign({ bankName: 'BCA', bankAcc: '', bankHolder: 'Nived Studio', prefix: 'NVD', presets: {} }, stored.settings || {}),
+    lastNumber: stored.lastNumber || '',
+  };
+  C.PRESETS.forEach(p => {
+    const s = store.settings.presets[p.key] || {};
+    store.settings.presets[p.key] = { detail: s.detail ?? p.detail, price: s.price ?? p.price };
+  });
+
+  function todayIso() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function prefix() { return (store.settings.prefix || 'NVD').trim() || 'NVD'; }
+  function matchesPattern(n) { return new RegExp('^' + prefix().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '-\\d{4}-\\d+$').test(n); }
+
+  const state = { lines: [], dueTouched: false };
+
+  const issue = todayIso();
+  $('issue').value = issue;
+  $('due').value = C.addDays(issue, 14);
+  $('number').value = C.nextInvoiceNumber(store.lastNumber, prefix(), issue, 0).number;
+
+  // presets
+  C.PRESETS.forEach(p => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.textContent = p.desc;
+    b.addEventListener('click', () => {
+      const s = store.settings.presets[p.key];
+      addLine({ desc: p.desc, detail: s.detail, qty: '1', price: C.formatIDR(C.parseAmount(s.price)) });
+    });
+    $('presets').appendChild(b);
+
+    const row = document.createElement('div');
+    row.className = 'preset-set';
+    const name = document.createElement('span'); name.textContent = p.desc;
+    const det = document.createElement('input'); det.value = store.settings.presets[p.key].detail; det.placeholder = 'detail';
+    const pr = document.createElement('input'); pr.className = 'mono'; pr.inputMode = 'numeric';
+    pr.value = C.formatIDR(C.parseAmount(store.settings.presets[p.key].price));
+    det.addEventListener('input', () => { store.settings.presets[p.key].detail = det.value; save(); });
+    pr.addEventListener('input', () => { store.settings.presets[p.key].price = C.parseAmount(pr.value); save(); });
+    pr.addEventListener('blur', () => { pr.value = C.formatIDR(C.parseAmount(pr.value)); });
+    row.append(name, det, pr);
+    $('presetSettings').appendChild(row);
+  });
+
+  ['bankName', 'bankAcc', 'bankHolder', 'prefix'].forEach(k => {
+    $(k).value = store.settings[k];
+    $(k).addEventListener('input', () => { store.settings[k] = $(k).value; save(); render(); });
+  });
+
+  function addLine(l) { state.lines.push(l); renderLines(); render(); }
+
+  function renderLines() {
+    const wrap = $('lines');
+    wrap.textContent = '';
+    state.lines.forEach((l, i) => {
+      const box = document.createElement('div'); box.className = 'line';
+      const r1 = document.createElement('div'); r1.className = 'row';
+      const r2 = document.createElement('div'); r2.className = 'row q';
+      const mk = (key, ph, cls, mode) => {
+        const inp = document.createElement('input');
+        inp.value = l[key]; inp.placeholder = ph; inp.setAttribute('aria-label', ph);
+        if (cls) inp.className = cls; if (mode) inp.inputMode = mode;
+        inp.addEventListener('input', () => { l[key] = inp.value; render(); });
+        if (key === 'price') inp.addEventListener('blur', () => { inp.value = l.price = C.formatIDR(C.parseAmount(inp.value)); render(); });
+        return inp;
+      };
+      r1.append(mk('desc', 'Item'), mk('detail', 'Detail'));
+      r2.append(mk('qty', 'Qty', 'mono', 'numeric'), mk('price', 'Price (Rp)', 'mono', 'numeric'));
+      const rm = document.createElement('button');
+      rm.type = 'button'; rm.className = 'rm'; rm.textContent = '×'; rm.setAttribute('aria-label', 'Remove line');
+      rm.addEventListener('click', () => { state.lines.splice(i, 1); renderLines(); render(); });
+      box.append(r1, r2, rm);
+      wrap.appendChild(box);
+    });
+  }
+
+  function render() {
+    $('pNo').textContent = $('number').value;
+    $('pClient').textContent = $('client').value || 'Client name';
+    $('pAddr').textContent = $('address').value;
+    $('pIssue').textContent = C.formatDate($('issue').value);
+    $('pDue').textContent = C.formatDate($('due').value);
+
+    const body = $('pLines');
+    body.textContent = '';
+    const vis = C.visibleLines(state.lines);
+    if (!vis.length) {
+      const tr = document.createElement('tr'); tr.className = 'empty';
+      const td = document.createElement('td'); td.colSpan = 4; td.textContent = 'Add an item to get started';
+      tr.appendChild(td); body.appendChild(tr);
+    }
+    vis.forEach(l => {
+      const tr = document.createElement('tr');
+      const t1 = document.createElement('td');
+      t1.textContent = l.desc.trim();
+      if (String(l.detail || '').trim()) { const d = document.createElement('span'); d.className = 'det'; d.textContent = l.detail.trim(); t1.appendChild(d); }
+      const cell = v => { const td = document.createElement('td'); td.className = 'n'; td.textContent = v; return td; };
+      tr.append(t1, cell(C.parseAmount(l.qty)), cell(C.formatIDR(C.parseAmount(l.price))), cell(C.formatIDR(C.lineAmount(l))));
+      body.appendChild(tr);
+    });
+    $('pTotal').textContent = C.formatRp(C.computeTotal(state.lines));
+    const s = store.settings;
+    $('pBank').textContent = [s.bankName && s.bankAcc ? s.bankName + ' ' + s.bankAcc : (s.bankName || s.bankAcc), s.bankHolder ? 'a.n. ' + s.bankHolder : ''].filter(Boolean).join('\n');
+    $('pNotes').textContent = $('notes').value.trim();
+  }
+
+  ['client', 'address', 'number', 'notes'].forEach(k => $(k).addEventListener('input', render));
+  $('issue').addEventListener('input', () => {
+    if (!state.dueTouched && $('issue').value) $('due').value = C.addDays($('issue').value, 14);
+    render();
+  });
+  $('due').addEventListener('input', () => { state.dueTouched = true; render(); });
+  $('addBlank').addEventListener('click', () => addLine({ desc: '', detail: '', qty: '1', price: '' }));
+
+  let printing = false;
+  const originalTitle = document.title;
+  $('download').addEventListener('click', () => {
+    printing = true;
+    document.title = C.pdfFileName($('number').value.trim(), $('client').value);
+    window.print();
+  });
+  window.addEventListener('afterprint', () => {
+    if (!printing) return;
+    printing = false;
+    document.title = originalTitle;
+    const cur = $('number').value.trim();
+    if (matchesPattern(cur)) store.lastNumber = cur;
+    save();
+    $('number').value = C.nextInvoiceNumber(store.lastNumber, prefix(), $('issue').value || todayIso(), 0).number;
+    render();
+  });
+
+  function fit() {
+    const stage = $('stage'), main = stage.parentElement;
+    const avail = main.clientWidth - parseFloat(getComputedStyle(main).paddingLeft) - parseFloat(getComputedStyle(main).paddingRight);
+    const scale = Math.min(1, avail / 794);
+    stage.style.transform = 'scale(' + scale + ')';
+    stage.style.height = ($('invoice').offsetHeight * scale) + 'px';
+  }
+  window.addEventListener('resize', fit);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+
+  renderLines();
+  render();
+  fit();
+})();
+</script>
+</body>
+</html>
