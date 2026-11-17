@@ -219,7 +219,7 @@ table.iv td:first-child{position:relative}
   function defaultSettings() {
     const presets = {};
     C.PRESETS.forEach(p => { presets[p.key] = { detail: p.detail, price: p.price }; });
-    return { bankName: 'BCA', bankAcc: '', bankHolder: 'Nived Studio', prefix: 'NVD', presets };
+    return { bankName: '', bankAcc: '', bankHolder: 'Nived Studio', prefix: 'NVD', presets };
   }
   const storedSettings = stored.settings && typeof stored.settings === 'object' ? stored.settings : {};
   const store = {
