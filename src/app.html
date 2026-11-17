@@ -49,7 +49,7 @@ summary{cursor:pointer;font-weight:500;margin-bottom:12px}
 .preset-set input{padding:6px 8px;font-size:13px}
 .main{padding:32px;display:flex;justify-content:center;align-items:flex-start}
 .stage{width:794px;transform-origin:top left}
-#invoice{width:794px;min-height:1123px;background:#fff;color:var(--ink);padding:64px 64px 48px;display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(0,0,0,.06),0 8px 30px rgba(0,0,0,.06);font-family:var(--sans);font-size:14px;line-height:1.5}
+#invoice,.iv-sheet{width:794px;min-height:1123px;background:#fff;color:var(--ink);padding:64px 64px 48px;display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(0,0,0,.06),0 8px 30px rgba(0,0,0,.06);font-family:var(--sans);font-size:14px;line-height:1.5}
 .iv-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px}
 .iv-mark{font-size:48px;font-weight:700;letter-spacing:-0.035em;line-height:1}
 .iv-mark span{color:var(--blue)}
@@ -148,7 +148,8 @@ table.iv td:first-child{position:relative}
     </fieldset>
 
     <button class="primary" id="download" type="button">Download PDF</button>
-    <p class="hint">In the print window, choose "Save as PDF". The number moves up by one afterwards.</p>
+    <button class="ghost" id="printBtn" type="button" style="margin-top:8px">Print a paper copy</button>
+    <p class="hint" id="dlHint">Saves an A4 PDF named after the client. The number moves up by one afterwards.</p>
 
     <details id="settings">
       <summary>Settings</summary>
@@ -175,7 +176,7 @@ table.iv td:first-child{position:relative}
     <div class="stage-wrap">
     <div class="paper-bar"><span class="edit-hint">Click any dashed text to type on the paper</span><button type="button" class="edit-btn" id="newInvoice">New invoice</button><button type="button" class="edit-btn" id="editToggle">Edit on paper</button></div>
     <div class="stage" id="stage">
-      <article id="invoice">
+      <article id="invoice" class="iv-sheet">
         <div class="iv-head">
           <div><div class="iv-mark">nived<span>.</span></div><div class="iv-tag">design · build · research</div></div>
           <div><div class="iv-title">Invoice</div><div class="iv-no" id="pNo" data-f="number" data-ph="Invoice number"></div></div>
@@ -481,24 +482,144 @@ table.iv td:first-child{position:relative}
   });
   $('due').addEventListener('input', () => { state.dueTouched = true; render(); });
 
-  let printing = false;
-  const originalTitle = document.title;
-  $('download').addEventListener('click', () => {
-    if (state.editing) setEditing(false);
-    printing = true;
-    document.title = C.pdfFileName($('number').value.trim(), $('client').value);
-    window.print();
-  });
-  window.addEventListener('afterprint', () => {
-    if (!printing) return;
-    printing = false;
-    document.title = originalTitle;
+  // --- PDF download: draw the invoice onto a canvas, then wrap it in an A4 PDF
+  const PAGE_W = 794, PAGE_H = PAGE_W * 297 / 210, SCALE = 3, TOP_GAP = 56, BOTTOM_GAP = 40;
+
+  function relRect(r, base) { return { x: r.left - base.left, y: r.top - base.top, w: r.width, h: r.height }; }
+
+  function paintNode(ctx, root, base) {
+    const all = [root, ...root.querySelectorAll('*')];
+    all.forEach(el => {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return;
+      const r = relRect(el.getBoundingClientRect(), base);
+      if (cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') {
+        ctx.fillStyle = cs.backgroundColor; ctx.fillRect(r.x, r.y, r.w, r.h);
+      }
+      [['Top', r.x, r.y, r.w, null], ['Bottom', r.x, null, r.w, null], ['Left', r.x, r.y, null, r.h], ['Right', null, r.y, null, r.h]].forEach(([side]) => {
+        const w = parseFloat(cs['border' + side + 'Width']);
+        if (!w || cs['border' + side + 'Style'] === 'none') return;
+        ctx.fillStyle = cs['border' + side + 'Color'];
+        if (side === 'Top') ctx.fillRect(r.x, r.y, r.w, w);
+        if (side === 'Bottom') ctx.fillRect(r.x, r.y + r.h - w, r.w, w);
+        if (side === 'Left') ctx.fillRect(r.x, r.y, w, r.h);
+        if (side === 'Right') ctx.fillRect(r.x + r.w - w, r.y, w, r.h);
+      });
+    });
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    let node;
+    while ((node = walker.nextNode())) {
+      const text = node.nodeValue;
+      if (!text.trim()) continue;
+      const cs = getComputedStyle(node.parentElement);
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      ctx.fillStyle = cs.color;
+      if ('letterSpacing' in ctx) ctx.letterSpacing = cs.letterSpacing === 'normal' ? '0px' : cs.letterSpacing;
+      ctx.textBaseline = 'alphabetic';
+      const m = ctx.measureText('Hg');
+      const asc = m.fontBoundingBoxAscent || parseFloat(cs.fontSize) * 0.8;
+      const desc = m.fontBoundingBoxDescent || parseFloat(cs.fontSize) * 0.2;
+      const re = /\S+/g; let mt;
+      while ((mt = re.exec(text))) {
+        range.setStart(node, mt.index); range.setEnd(node, mt.index + mt[0].length);
+        const rect = range.getClientRects()[0];
+        if (!rect) continue;
+        const r = relRect(rect, base);
+        ctx.fillText(mt[0], r.x, r.y + (r.h - (asc + desc)) / 2 + asc);
+      }
+    }
+  }
+
+  async function renderPages() {
+    if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+    const holder = document.createElement('div');
+    holder.style.cssText = 'position:absolute;left:-20000px;top:0;width:' + PAGE_W + 'px';
+    const clone = $('invoice').cloneNode(true);
+    clone.classList.remove('editing');
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+    clone.querySelectorAll('.edit-only').forEach(el => el.remove());
+    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+    clone.style.boxShadow = 'none';
+    clone.style.minHeight = '0px';
+    holder.appendChild(clone);
+    document.body.appendChild(holder);
+    try {
+      let total = clone.getBoundingClientRect().height;
+      if (total <= PAGE_H) { clone.style.minHeight = PAGE_H + 'px'; total = PAGE_H; }
+      const base = clone.getBoundingClientRect();
+      total = Math.ceil(base.height);
+      const candidates = Array.from(clone.querySelectorAll('tbody tr')).map(tr => tr.getBoundingClientRect().bottom - base.top);
+      const foot = clone.querySelector('.iv-foot');
+      if (foot) candidates.push(foot.getBoundingClientRect().top - base.top);
+      const cuts = total <= Math.ceil(PAGE_H) ? [total] : C.pageCuts(total, PAGE_H - BOTTOM_GAP, PAGE_H - TOP_GAP - BOTTOM_GAP, candidates);
+
+      const full = document.createElement('canvas');
+      full.width = Math.ceil(PAGE_W * SCALE); full.height = Math.ceil(total * SCALE);
+      const fctx = full.getContext('2d');
+      fctx.scale(SCALE, SCALE);
+      fctx.fillStyle = '#ffffff'; fctx.fillRect(0, 0, PAGE_W, total);
+      paintNode(fctx, clone, base);
+
+      const pages = [];
+      let start = 0;
+      for (let i = 0; i < cuts.length; i++) {
+        const end = Math.min(cuts[i], total);
+        const page = document.createElement('canvas');
+        page.width = Math.round(PAGE_W * SCALE); page.height = Math.round(PAGE_H * SCALE);
+        const pctx = page.getContext('2d');
+        pctx.fillStyle = '#ffffff'; pctx.fillRect(0, 0, page.width, page.height);
+        const offset = i === 0 ? 0 : TOP_GAP;
+        const h = Math.min(end - start, PAGE_H - offset);
+        pctx.drawImage(full, 0, start * SCALE, full.width, h * SCALE, 0, offset * SCALE, page.width, h * SCALE);
+        const blob = await new Promise(res => page.toBlob(res, 'image/jpeg', 0.93));
+        pages.push({ bytes: new Uint8Array(await blob.arrayBuffer()), width: page.width, height: page.height });
+        start = end;
+      }
+      return pages;
+    } finally {
+      holder.remove();
+    }
+  }
+
+  function advanceNumber() {
     const cur = $('number').value.trim();
     if (matchesPattern(cur)) store.lastNumber = C.laterNumber(store.lastNumber, cur, prefix());
     save();
     state.numberTouched = false;
     refreshNumber();
     render();
+  }
+
+  $('download').addEventListener('click', async () => {
+    if (state.editing) setEditing(false);
+    const btn = $('download');
+    btn.disabled = true; btn.textContent = 'Preparing PDF…';
+    try {
+      const pages = await renderPages();
+      const blob = new Blob([C.buildPdf(pages)], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = C.invoiceFileName($('client').value, $('number').value.trim());
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      advanceNumber();
+      $('dlHint').textContent = 'Saved ' + a.download + '. Check your Downloads folder.';
+    } catch (e) {
+      $('dlHint').textContent = "Couldn't make the PDF here. Use Print a paper copy and choose Save as PDF.";
+    } finally {
+      btn.disabled = false; btn.textContent = 'Download PDF';
+    }
+  });
+
+  $('printBtn').addEventListener('click', () => {
+    if (state.editing) setEditing(false);
+    const original = document.title;
+    document.title = C.invoiceFileName($('client').value, $('number').value.trim()).replace(/\.pdf$/, '');
+    window.print();
+    setTimeout(() => { document.title = original; }, 1000);
   });
 
   // --- new invoice, reset, undo
