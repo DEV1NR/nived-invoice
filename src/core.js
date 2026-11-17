@@ -15,21 +15,48 @@ export function formatRp(n) {
   return 'Rp ' + formatIDR(n);
 }
 
+function normalizeAmount(s) {
+  return String(s ?? '').trim().replace(/^rp\.?/i, '').replace(/\s+/g, '');
+}
+
+const GROUPED = /^\d{1,3}(?:([.,])\d{3})(?:\1\d{3})*$/;
+const DECIMAL = /^\d+[.,]\d+$/;
+
+export function isValidAmount(s) {
+  const str = normalizeAmount(s);
+  return str === '' || /^\d+$/.test(str) || GROUPED.test(str) || DECIMAL.test(str);
+}
+
 export function parseAmount(s) {
-  if (typeof s === 'number') return Number.isFinite(s) && s > 0 ? Math.floor(s) : 0;
+  if (typeof s === 'number') return Number.isFinite(s) && s > 0 ? Math.round(s) : 0;
+  const str = normalizeAmount(s);
+  if (/^\d+$/.test(str) || GROUPED.test(str)) return parseInt(str.replace(/[.,]/g, ''), 10);
+  if (DECIMAL.test(str)) return Math.round(parseFloat(str.replace(',', '.')));
+  return 0;
+}
+
+export function isValidQty(s) {
   const str = String(s ?? '').trim();
-  if (str.startsWith('-')) return 0;
-  const digits = str.replace(/\./g, '');
-  if (!/^\d+$/.test(digits)) return 0;
-  return parseInt(digits, 10);
+  return str === '' || /^\d+(?:[.,]\d+)?$/.test(str);
+}
+
+export function parseQty(s) {
+  if (typeof s === 'number') return Number.isFinite(s) && s > 0 ? s : 0;
+  const str = String(s ?? '').trim();
+  return /^\d+(?:[.,]\d+)?$/.test(str) ? parseFloat(str.replace(',', '.')) : 0;
+}
+
+export function formatQty(q) {
+  const n = Math.round(Number(q) * 100) / 100;
+  return String(n).replace('.', ',');
 }
 
 export function lineAmount(line) {
-  return parseAmount(line.qty) * parseAmount(line.price);
+  return Math.round(parseQty(line.qty) * parseAmount(line.price));
 }
 
 export function visibleLines(lines) {
-  return lines.filter(l => String(l.desc ?? '').trim() !== '' && parseAmount(l.qty) > 0);
+  return lines.filter(l => String(l.desc ?? '').trim() !== '' && parseQty(l.qty) > 0);
 }
 
 export function computeTotal(lines) {
@@ -65,6 +92,16 @@ export function nextInvoiceNumber(current, prefix, issueIso, storedSeq) {
   return { number: formatInvoiceNumber(prefix, year, seq), seq };
 }
 
+export function laterNumber(a, b, prefix) {
+  const re = new RegExp(`^${escapeRe(prefix)}-(\\d{4})-(\\d+)$`);
+  const pa = re.exec(a || ''), pb = re.exec(b || '');
+  if (!pb) return a || '';
+  if (!pa) return b;
+  const ka = Number(pa[1]) * 1e6 + Number(pa[2]);
+  const kb = Number(pb[1]) * 1e6 + Number(pb[2]);
+  return kb > ka ? b : a;
+}
+
 export function pdfFileName(invoiceNo, client) {
   const c = String(client || '')
     .replace(/[\/\\:]/g, '-')
@@ -76,7 +113,7 @@ export function pdfFileName(invoiceNo, client) {
 
 if (typeof globalThis !== 'undefined') {
   globalThis.NivedCore = {
-    PRESETS, formatIDR, formatRp, parseAmount, lineAmount, visibleLines, computeTotal,
+    PRESETS, formatIDR, formatRp, parseAmount, parseQty, isValidAmount, isValidQty, formatQty, laterNumber, lineAmount, visibleLines, computeTotal,
     formatDate, addDays, formatInvoiceNumber, nextInvoiceNumber, pdfFileName,
   };
 }

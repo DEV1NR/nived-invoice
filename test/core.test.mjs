@@ -16,7 +16,7 @@ test('parses amounts', () => {
   assert.equal(parseAmount('1.200.000'), 1200000);
   assert.equal(parseAmount(''), 0);
   assert.equal(parseAmount('-5'), 0);
-  assert.equal(parseAmount('2.5'), 25);
+  assert.equal(parseAmount('2.5'), 3);
   assert.equal(parseAmount('abc'), 0);
   assert.equal(parseAmount(3), 3);
   assert.equal(parseAmount(undefined), 0);

@@ -34,6 +34,7 @@ button{font:inherit;cursor:pointer;border-radius:6px}
 .line .row{margin-bottom:6px}
 .line .row.q{grid-template-columns:70px 1fr}
 .line input{padding:6px 8px;font-size:13px}
+input.bad{border-color:#c0392b;background:#fdf1ef}
 .rm{position:absolute;top:6px;right:6px;border:0;background:none;color:var(--muted);font-size:16px;line-height:1;padding:4px}
 .rm:hover{color:#c0392b}
 .ghost{border:1px dashed #cfcfcf;background:none;width:100%;padding:8px;color:#555;font-size:13px}
@@ -74,14 +75,16 @@ table.iv th.n{font-size:11px}
 .iv-spacer{flex:1}
 .iv-sign{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:40px}
 @media (max-width:1000px){.app{grid-template-columns:1fr}.side{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line)}.main{padding:16px;justify-content:flex-start}}
-@page { size: A4; margin: 0 }
+@page { size: A4; margin: 12mm 0 }
 @media print{
   html,body{background:#fff}
   .side{display:none}
   .app{display:block}
   .main{padding:0;display:block}
   .stage{transform:none!important;width:auto;height:auto!important}
-  #invoice{width:210mm;min-height:297mm;height:297mm;box-shadow:none;padding:17mm 17mm 13mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
+  #invoice{width:210mm;min-height:272mm;box-shadow:none;padding:5mm 17mm 1mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  table.iv tr,.iv-foot,.iv-sign{break-inside:avoid}
+  table.iv thead{display:table-header-group}
 }
 </style>
 </head>
@@ -196,7 +199,7 @@ table.iv th.n{font-size:11px}
   function prefix() { return (store.settings.prefix || 'NVD').trim() || 'NVD'; }
   function matchesPattern(n) { return new RegExp('^' + prefix().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '-\\d{4}-\\d+$').test(n); }
 
-  const state = { lines: [], dueTouched: false };
+  const state = { lines: [], dueTouched: false, numberTouched: false };
 
   const issue = todayIso();
   $('issue').value = issue;
@@ -228,7 +231,7 @@ table.iv th.n{font-size:11px}
 
   ['bankName', 'bankAcc', 'bankHolder', 'prefix'].forEach(k => {
     $(k).value = store.settings[k];
-    $(k).addEventListener('input', () => { store.settings[k] = $(k).value; save(); render(); });
+    $(k).addEventListener('input', () => { store.settings[k] = $(k).value; save(); if (k === 'prefix') refreshNumber(); render(); });
   });
 
   function addLine(l) { state.lines.push(l); renderLines(); render(); }
@@ -244,8 +247,16 @@ table.iv th.n{font-size:11px}
         const inp = document.createElement('input');
         inp.value = l[key]; inp.placeholder = ph; inp.setAttribute('aria-label', ph);
         if (cls) inp.className = cls; if (mode) inp.inputMode = mode;
-        inp.addEventListener('input', () => { l[key] = inp.value; render(); });
-        if (key === 'price') inp.addEventListener('blur', () => { inp.value = l.price = C.formatIDR(C.parseAmount(inp.value)); render(); });
+        const check = () => {
+          const ok = key === 'price' ? C.isValidAmount(inp.value) : key === 'qty' ? C.isValidQty(inp.value) : true;
+          inp.classList.toggle('bad', !ok);
+          return ok;
+        };
+        inp.addEventListener('input', () => { l[key] = inp.value; check(); render(); });
+        if (key === 'price') inp.addEventListener('blur', () => {
+          if (check() && inp.value.trim() !== '') { inp.value = l.price = C.formatIDR(C.parseAmount(inp.value)); render(); }
+        });
+        check();
         return inp;
       };
       r1.append(mk('desc', 'Item'), mk('detail', 'Detail'));
@@ -279,7 +290,7 @@ table.iv th.n{font-size:11px}
       t1.textContent = l.desc.trim();
       if (String(l.detail || '').trim()) { const d = document.createElement('span'); d.className = 'det'; d.textContent = l.detail.trim(); t1.appendChild(d); }
       const cell = v => { const td = document.createElement('td'); td.className = 'n'; td.textContent = v; return td; };
-      tr.append(t1, cell(C.parseAmount(l.qty)), cell(C.formatIDR(C.parseAmount(l.price))), cell(C.formatIDR(C.lineAmount(l))));
+      tr.append(t1, cell(C.formatQty(C.parseQty(l.qty))), cell(C.formatIDR(C.parseAmount(l.price))), cell(C.formatIDR(C.lineAmount(l))));
       body.appendChild(tr);
     });
     $('pTotal').textContent = C.formatRp(C.computeTotal(state.lines));
@@ -288,9 +299,15 @@ table.iv th.n{font-size:11px}
     $('pNotes').textContent = $('notes').value.trim();
   }
 
-  ['client', 'address', 'number', 'notes'].forEach(k => $(k).addEventListener('input', render));
+  function refreshNumber() {
+    if (state.numberTouched) return;
+    $('number').value = C.nextInvoiceNumber(store.lastNumber, prefix(), $('issue').value || todayIso(), 0).number;
+  }
+  ['client', 'address', 'notes'].forEach(k => $(k).addEventListener('input', render));
+  $('number').addEventListener('input', () => { state.numberTouched = true; render(); });
   $('issue').addEventListener('input', () => {
     if (!state.dueTouched && $('issue').value) $('due').value = C.addDays($('issue').value, 14);
+    refreshNumber();
     render();
   });
   $('due').addEventListener('input', () => { state.dueTouched = true; render(); });
@@ -308,9 +325,10 @@ table.iv th.n{font-size:11px}
     printing = false;
     document.title = originalTitle;
     const cur = $('number').value.trim();
-    if (matchesPattern(cur)) store.lastNumber = cur;
+    if (matchesPattern(cur)) store.lastNumber = C.laterNumber(store.lastNumber, cur, prefix());
     save();
-    $('number').value = C.nextInvoiceNumber(store.lastNumber, prefix(), $('issue').value || todayIso(), 0).number;
+    state.numberTouched = false;
+    refreshNumber();
     render();
   });
 
