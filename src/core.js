@@ -70,6 +70,15 @@ export function formatDate(iso) {
   return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
 }
 
+export function parseDateDMY(str) {
+  const m = /^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/.exec(String(str || '').trim());
+  if (!m) return '';
+  const d = Number(m[1]), mo = Number(m[2]), y = Number(m[3]);
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return '';
+  return dt.toISOString().slice(0, 10);
+}
+
 export function addDays(iso, days) {
   const [y, m, d] = iso.split('-').map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d + days));
@@ -116,6 +125,6 @@ export function pdfFileName(invoiceNo, client) {
 if (typeof globalThis !== 'undefined') {
   globalThis.NivedCore = {
     PRESETS, formatIDR, formatRp, parseAmount, parseQty, isValidAmount, isValidQty, formatQty, laterNumber, lineAmount, visibleLines, computeTotal,
-    formatDate, addDays, formatInvoiceNumber, nextInvoiceNumber, pdfFileName,
+    formatDate, parseDateDMY, addDays, formatInvoiceNumber, nextInvoiceNumber, pdfFileName,
   };
 }

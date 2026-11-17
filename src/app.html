@@ -75,11 +75,37 @@ table.iv th.n{font-size:11px}
 .iv-notes{margin-top:28px;font-size:13px;color:#555;white-space:pre-line}
 .iv-spacer{flex:1}
 .iv-sign{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:40px}
+.paper-bar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px}
+.edit-btn{border:1px solid #d9d9d9;background:#fff;padding:7px 14px;font-size:13px}
+.edit-btn:hover{border-color:var(--ink)}
+.edit-btn.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.edit-hint{font-family:var(--mono);font-size:11px;color:var(--muted);align-self:center;display:none}
+.editing-on .edit-hint{display:block}
+.edit-only{display:none}
+#invoice.editing .edit-only{display:inline-flex}
+#invoice.editing [data-f]{outline:1px dashed rgba(11,107,196,.35);outline-offset:2px;border-radius:2px;min-width:1.5em;display:inline-block;cursor:text}
+#invoice.editing [data-f]:hover{outline-color:rgba(11,107,196,.7)}
+#invoice.editing [data-f]:focus{outline:2px solid var(--blue);background:#f2f7fd}
+#invoice [data-f].bad{outline:2px solid #c0392b!important;background:#fdf1ef}
+#invoice [data-ph]:empty::before{content:attr(data-ph);color:#bbb}
+#invoice:not(.editing) [data-ph]:not(.ph-always):empty::before{content:none}
+#invoice.editing .iv-addr,#invoice.editing .iv-notes{display:block;min-height:1.5em}
+.row-rm{position:absolute;left:-30px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);font-size:16px;padding:2px 6px}
+.row-rm:hover{color:#c0392b}
+table.iv tr{position:relative}
+table.iv td:first-child{position:relative}
+.paper-add{margin-top:10px;border:1px dashed #cfcfcf;background:none;color:#555;font-size:13px;padding:6px 12px}
+.paper-add:hover{border-color:var(--ink);color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:8px;padding:10px 12px 10px 16px;display:none;gap:14px;align-items:center;font-size:13px;z-index:10}
+.toast.show{display:flex}
+.toast button{border:1px solid #555;background:none;color:#fff;padding:4px 10px;font-size:13px}
+.toast button:hover{border-color:#fff}
 @media (max-width:1000px){.app{grid-template-columns:1fr}.side{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line)}.main{padding:16px;justify-content:flex-start}}
 @page { size: A4; margin: 12mm 0 }
 @media print{
   html,body{background:#fff}
-  .side{display:none}
+  .side,.paper-bar,.edit-only,.toast{display:none!important}
+  #invoice [data-f]{outline:none!important;background:none!important}
   .app{display:block}
   .main{padding:0;display:block}
   .stage{transform:none!important;width:auto;height:auto!important}
@@ -140,37 +166,44 @@ table.iv th.n{font-size:11px}
         <legend>numbering</legend>
         <div class="field"><label for="prefix">Invoice prefix</label><input id="prefix" class="mono"></div>
       </fieldset>
+      <button type="button" class="ghost" id="resetSettings">Reset settings to defaults</button>
       <p class="hint">Saved in this browser only.</p>
     </details>
   </aside>
 
   <main class="main">
+    <div class="stage-wrap">
+    <div class="paper-bar"><span class="edit-hint">Click any dashed text to type on the paper</span><button type="button" class="edit-btn" id="newInvoice">New invoice</button><button type="button" class="edit-btn" id="editToggle">Edit on paper</button></div>
     <div class="stage" id="stage">
       <article id="invoice">
         <div class="iv-head">
           <div><div class="iv-mark">nived<span>.</span></div><div class="iv-tag">design · build · research</div></div>
-          <div><div class="iv-title">Invoice</div><div class="iv-no" id="pNo"></div></div>
+          <div><div class="iv-title">Invoice</div><div class="iv-no" id="pNo" data-f="number" data-ph="Invoice number"></div></div>
         </div>
         <div class="iv-meta">
-          <div><div class="k">Billed to</div><div class="iv-client" id="pClient"></div><div class="iv-addr" id="pAddr"></div></div>
-          <div><div class="k">Issued</div><div class="iv-date" id="pIssue"></div></div>
-          <div><div class="k">Due</div><div class="iv-date" id="pDue"></div></div>
+          <div><div class="k">Billed to</div><div class="iv-client ph-always" id="pClient" data-f="client" data-ph="Client name"></div><div class="iv-addr" id="pAddr" data-f="address" data-ph="Client address" data-multi></div></div>
+          <div><div class="k">Issued</div><div class="iv-date" id="pIssue" data-f="issue" data-ph="DD.MM.YYYY"></div></div>
+          <div><div class="k">Due</div><div class="iv-date" id="pDue" data-f="due" data-ph="DD.MM.YYYY"></div></div>
         </div>
         <table class="iv">
           <thead><tr><th>Item</th><th class="n">Qty</th><th class="n">Price</th><th class="n">Amount</th></tr></thead>
           <tbody id="pLines"></tbody>
         </table>
+        <div class="edit-only"><button type="button" class="paper-add" id="paperAdd">+ Add line</button></div>
         <div class="iv-foot">
           <div class="iv-bank" id="pBank"></div>
           <div><div class="iv-total-k">Total IDR</div><div class="iv-total" id="pTotal"></div></div>
         </div>
-        <div class="iv-notes" id="pNotes"></div>
+        <div class="iv-notes" id="pNotes" data-f="notes" data-ph="Add a note (optional)" data-multi></div>
         <div class="iv-spacer"></div>
         <div class="iv-sign"><span>Curiosity first. Intention always.</span><span>nived.studio</span></div>
       </article>
     </div>
+    </div>
   </main>
 </div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="undoBtn">Undo</button></div>
 
 <!--CORE-->
 <script>
@@ -183,8 +216,14 @@ table.iv th.n{font-size:11px}
   function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }
 
   const stored = load();
+  function defaultSettings() {
+    const presets = {};
+    C.PRESETS.forEach(p => { presets[p.key] = { detail: p.detail, price: p.price }; });
+    return { bankName: 'BCA', bankAcc: '', bankHolder: 'Nived Studio', prefix: 'NVD', presets };
+  }
+  const storedSettings = stored.settings && typeof stored.settings === 'object' ? stored.settings : {};
   const store = {
-    settings: Object.assign({ bankName: 'BCA', bankAcc: '', bankHolder: 'Nived Studio', prefix: 'NVD', presets: {} }, stored.settings || {}),
+    settings: Object.assign(defaultSettings(), storedSettings, { presets: Object.assign({}, storedSettings.presets || {}) }),
     lastNumber: stored.lastNumber || '',
   };
   C.PRESETS.forEach(p => {
@@ -199,13 +238,14 @@ table.iv th.n{font-size:11px}
   function prefix() { return (store.settings.prefix || 'NVD').trim() || 'NVD'; }
   function matchesPattern(n) { return new RegExp('^' + prefix().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '-\\d{4}-\\d+$').test(n); }
 
-  const state = { lines: [], dueTouched: false, numberTouched: false };
+  const state = { lines: [], dueTouched: false, numberTouched: false, editing: false };
 
   const issue = todayIso();
   $('issue').value = issue;
   $('due').value = C.addDays(issue, 14);
   $('number').value = C.nextInvoiceNumber(store.lastNumber, prefix(), issue, 0).number;
 
+  const presetInputs = {};
   // presets
   C.PRESETS.forEach(p => {
     const b = document.createElement('button');
@@ -226,6 +266,7 @@ table.iv th.n{font-size:11px}
     pr.addEventListener('input', () => { store.settings.presets[p.key].price = C.parseAmount(pr.value); save(); });
     pr.addEventListener('blur', () => { pr.value = C.formatIDR(C.parseAmount(pr.value)); });
     row.append(name, det, pr);
+    presetInputs[p.key] = { det, pr };
     $('presetSettings').appendChild(row);
   });
 
@@ -279,35 +320,153 @@ table.iv th.n{font-size:11px}
     });
   }
 
-  function render() {
-    $('pNo').textContent = $('number').value;
-    $('pClient').textContent = $('client').value || 'Client name';
-    $('pAddr').textContent = $('address').value;
-    $('pIssue').textContent = C.formatDate($('issue').value);
-    $('pDue').textContent = C.formatDate($('due').value);
+  function setText(el, v) {
+    if (el !== document.activeElement && el.textContent !== v) el.textContent = v;
+  }
+  function qtyText(raw) { return C.isValidQty(raw) ? C.formatQty(C.parseQty(raw)) : String(raw); }
+  function priceText(raw) { return C.isValidAmount(raw) ? C.formatIDR(C.parseAmount(raw)) : String(raw); }
+  function shownLines() {
+    return state.lines.map((l, i) => [l, i]).filter(([l]) => state.editing || C.visibleLines([l]).length);
+  }
+  function editable(el, on) {
+    if (on) {
+      el.setAttribute('contenteditable', 'plaintext-only');
+      if (el.contentEditable !== 'plaintext-only') el.setAttribute('contenteditable', 'true');
+      el.spellcheck = false;
+    } else el.removeAttribute('contenteditable');
+  }
 
+  function buildTable() {
     const body = $('pLines');
     body.textContent = '';
-    const vis = C.visibleLines(state.lines);
-    if (!vis.length) {
+    const rows = shownLines();
+    if (!rows.length) {
       const tr = document.createElement('tr'); tr.className = 'empty';
-      const td = document.createElement('td'); td.colSpan = 4; td.textContent = 'Add an item to get started';
+      const td = document.createElement('td'); td.colSpan = 4;
+      td.textContent = state.editing ? 'Use + Add line below' : 'Add an item to get started';
       tr.appendChild(td); body.appendChild(tr);
+      return;
     }
-    vis.forEach(l => {
-      const tr = document.createElement('tr');
+    rows.forEach(([l, i]) => {
+      const tr = document.createElement('tr'); tr.dataset.i = i;
       const t1 = document.createElement('td');
-      t1.textContent = l.desc.trim();
-      if (String(l.detail || '').trim()) { const d = document.createElement('span'); d.className = 'det'; d.textContent = l.detail.trim(); t1.appendChild(d); }
-      const cell = v => { const td = document.createElement('td'); td.className = 'n'; td.textContent = v; return td; };
-      tr.append(t1, cell(C.formatQty(C.parseQty(l.qty))), cell(C.formatIDR(C.parseAmount(l.price))), cell(C.formatIDR(C.lineAmount(l))));
+      const desc = document.createElement('span'); desc.dataset.f = 'desc'; desc.dataset.ph = 'Item';
+      const det = document.createElement('span'); det.className = 'det'; det.dataset.f = 'detail'; det.dataset.ph = 'detail';
+      t1.append(desc, det);
+      if (state.editing) {
+        const rm = document.createElement('button');
+        rm.type = 'button'; rm.className = 'row-rm edit-only'; rm.textContent = '×'; rm.setAttribute('aria-label', 'Remove line');
+        rm.addEventListener('click', () => { state.lines.splice(i, 1); renderLines(); buildTable(); render(); });
+        t1.appendChild(rm);
+      }
+      const cell = (f) => { const td = document.createElement('td'); td.className = 'n'; const sp = document.createElement('span'); if (f) { sp.dataset.f = f; } else { sp.className = 'amt'; } td.appendChild(sp); return td; };
+      tr.append(t1, cell('qty'), cell('price'), cell(null));
       body.appendChild(tr);
     });
+    body.querySelectorAll('[data-f]').forEach(el => editable(el, state.editing));
+  }
+
+  function fillTable() {
+    const body = $('pLines');
+    body.querySelectorAll('tr[data-i]').forEach(tr => {
+      const l = state.lines[Number(tr.dataset.i)];
+      if (!l) return;
+      const q = tr.querySelector('[data-f=qty]'), p = tr.querySelector('[data-f=price]');
+      setText(tr.querySelector('[data-f=desc]'), state.editing ? String(l.desc) : String(l.desc).trim());
+      setText(tr.querySelector('[data-f=detail]'), state.editing ? String(l.detail || '') : String(l.detail || '').trim());
+      setText(q, qtyText(l.qty));
+      setText(p, priceText(l.price));
+      q.classList.toggle('bad', !C.isValidQty(l.qty));
+      p.classList.toggle('bad', !C.isValidAmount(l.price));
+      setText(tr.querySelector('.amt'), C.formatIDR(C.lineAmount(l)));
+    });
+  }
+
+  function render() {
+    setText($('pNo'), $('number').value);
+    setText($('pClient'), $('client').value);
+    setText($('pAddr'), $('address').value);
+    setText($('pIssue'), C.formatDate($('issue').value));
+    setText($('pDue'), C.formatDate($('due').value));
+
+    const body = $('pLines');
+    const rows = shownLines();
+    const current = Array.from(body.querySelectorAll('tr[data-i]')).map(tr => tr.dataset.i).join(',');
+    const wanted = rows.map(([, i]) => String(i)).join(',');
+    const emptyShown = !!body.querySelector('tr.empty');
+    if (current !== wanted || (!rows.length && !emptyShown)) buildTable();
+    fillTable();
+
     $('pTotal').textContent = C.formatRp(C.computeTotal(state.lines));
     const s = store.settings;
     $('pBank').textContent = [s.bankName && s.bankAcc ? s.bankName + ' ' + s.bankAcc : (s.bankName || s.bankAcc), s.bankHolder ? 'a.n. ' + s.bankHolder : ''].filter(Boolean).join('\n');
-    $('pNotes').textContent = $('notes').value.trim();
+    setText($('pNotes'), state.editing ? $('notes').value : $('notes').value.trim());
+    fit();
   }
+
+  // --- editing on the paper
+  function setEditing(on) {
+    state.editing = on;
+    const inv = $('invoice');
+    inv.classList.toggle('editing', on);
+    document.body.classList.toggle('editing-on', on);
+    $('editToggle').classList.toggle('on', on);
+    $('editToggle').textContent = on ? 'Done editing' : 'Edit on paper';
+    inv.querySelectorAll('.iv-head [data-f], .iv-meta [data-f], #pNotes').forEach(el => editable(el, on));
+    if (document.activeElement && inv.contains(document.activeElement)) document.activeElement.blur();
+    buildTable();
+    render();
+  }
+  $('editToggle').addEventListener('click', () => setEditing(!state.editing));
+  $('paperAdd').addEventListener('click', () => {
+    state.lines.push({ desc: '', detail: '', qty: '1', price: '' });
+    renderLines(); render();
+    const last = $('pLines').querySelector('tr[data-i="' + (state.lines.length - 1) + '"] [data-f=desc]');
+    if (last) last.focus();
+  });
+
+  function paperText(el) { return (el.innerText || el.textContent || '').replace(/ /g, ' ').replace(/\n$/, ''); }
+
+  $('invoice').addEventListener('keydown', e => {
+    const el = e.target;
+    if (!state.editing || !el.dataset || !el.dataset.f) return;
+    if (e.key === 'Enter' && !('multi' in el.dataset)) { e.preventDefault(); el.blur(); }
+  });
+  $('invoice').addEventListener('input', e => {
+    const el = e.target;
+    if (!state.editing || !el.dataset || !el.dataset.f) return;
+    const f = el.dataset.f, v = paperText(el);
+    const tr = el.closest('tr[data-i]');
+    if (tr) {
+      const l = state.lines[Number(tr.dataset.i)];
+      l[f] = v;
+      renderLines();
+    } else if (f === 'number') { $('number').value = v; state.numberTouched = true; }
+    else if (f === 'client' || f === 'address' || f === 'notes') { $(f).value = v; }
+    else return; // dates are applied when you leave the field
+    render();
+  });
+  $('invoice').addEventListener('focusout', e => {
+    const el = e.target;
+    if (!state.editing || !el.dataset || !el.dataset.f) return;
+    const f = el.dataset.f;
+    if (f === 'issue' || f === 'due') {
+      const iso = C.parseDateDMY(paperText(el));
+      if (iso) {
+        $(f).value = iso;
+        if (f === 'issue') { if (!state.dueTouched) $('due').value = C.addDays(iso, 14); refreshNumber(); }
+        else state.dueTouched = true;
+      }
+      el.textContent = C.formatDate($(f).value);
+    } else if (f === 'price') {
+      const tr = el.closest('tr[data-i]'); const l = state.lines[Number(tr.dataset.i)];
+      if (C.isValidAmount(l.price) && String(l.price).trim() !== '') { l.price = C.formatIDR(C.parseAmount(l.price)); renderLines(); }
+      el.textContent = priceText(l.price);
+    } else if (f === 'qty') {
+      const tr = el.closest('tr[data-i]'); el.textContent = qtyText(state.lines[Number(tr.dataset.i)].qty);
+    }
+    render();
+  });
 
   function refreshNumber() {
     if (state.numberTouched) return;
@@ -325,6 +484,7 @@ table.iv th.n{font-size:11px}
   let printing = false;
   const originalTitle = document.title;
   $('download').addEventListener('click', () => {
+    if (state.editing) setEditing(false);
     printing = true;
     document.title = C.pdfFileName($('number').value.trim(), $('client').value);
     window.print();
@@ -339,6 +499,61 @@ table.iv th.n{font-size:11px}
     state.numberTouched = false;
     refreshNumber();
     render();
+  });
+
+  // --- new invoice, reset, undo
+  let undoFn = null, toastTimer = null;
+  function showUndo(msg, fn) {
+    undoFn = fn;
+    $('toastMsg').textContent = msg;
+    $('toast').classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 10000);
+  }
+  function hideToast() { $('toast').classList.remove('show'); undoFn = null; }
+  $('undoBtn').addEventListener('click', () => { const fn = undoFn; hideToast(); if (fn) fn(); });
+
+  function snapshotInvoice() {
+    return {
+      client: $('client').value, address: $('address').value, notes: $('notes').value,
+      number: $('number').value, issue: $('issue').value, due: $('due').value,
+      lines: state.lines.map(l => Object.assign({}, l)),
+      dueTouched: state.dueTouched, numberTouched: state.numberTouched,
+    };
+  }
+  function restoreInvoice(snap) {
+    ['client', 'address', 'notes', 'number', 'issue', 'due'].forEach(k => { $(k).value = snap[k]; });
+    state.lines = snap.lines.map(l => Object.assign({}, l));
+    state.dueTouched = snap.dueTouched; state.numberTouched = snap.numberTouched;
+    renderLines(); render();
+  }
+  $('newInvoice').addEventListener('click', () => {
+    const snap = snapshotInvoice();
+    ['client', 'address', 'notes'].forEach(k => { $(k).value = ''; });
+    state.lines = [];
+    state.dueTouched = false; state.numberTouched = false;
+    const t = todayIso();
+    $('issue').value = t; $('due').value = C.addDays(t, 14);
+    refreshNumber();
+    renderLines(); render();
+    showUndo('Started a fresh invoice', () => restoreInvoice(snap));
+  });
+
+  function syncSettingsInputs() {
+    ['bankName', 'bankAcc', 'bankHolder', 'prefix'].forEach(k => { $(k).value = store.settings[k]; });
+    C.PRESETS.forEach(p => {
+      const s = store.settings.presets[p.key], inp = presetInputs[p.key];
+      inp.det.value = s.detail; inp.pr.value = C.formatIDR(C.parseAmount(s.price));
+    });
+  }
+  function applySettings(next) {
+    store.settings = next;
+    save(); syncSettingsInputs(); refreshNumber(); render();
+  }
+  $('resetSettings').addEventListener('click', () => {
+    const snap = JSON.parse(JSON.stringify(store.settings));
+    applySettings(defaultSettings());
+    showUndo('Settings reset to defaults', () => applySettings(snap));
   });
 
   function fit() {
