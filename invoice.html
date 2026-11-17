@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nived invoice generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#141414;--muted:#8a8a8a;--line:#e6e6e6;--blue:#0B6BC4;--bg:#f4f3f0;--sans:'Bricolage Grotesque',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px}
+.app{display:grid;grid-template-columns:400px minmax(0,1fr);min-height:100vh}
+.side{background:#fff;border-right:1px solid var(--line);padding:24px 22px 40px;overflow-y:auto;max-height:100vh;position:sticky;top:0}
+.brand{font-size:22px;font-weight:700;letter-spacing:-0.03em;margin:0 0 2px}
+.brand span{color:var(--blue)}
+.sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0 0 22px}
+fieldset{border:0;padding:0;margin:0 0 22px}
+legend{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:lowercase;margin-bottom:8px;padding:0}
+label{display:block;font-size:12px;color:#555;margin:0 0 4px}
+input,textarea{width:100%;font:inherit;font-size:14px;color:var(--ink);background:#fff;border:1px solid #d9d9d9;border-radius:6px;padding:8px 10px;outline:none}
+input:focus,textarea:focus{border-color:var(--ink)}
+textarea{resize:vertical;min-height:58px}
+.row{display:grid;gap:10px;grid-template-columns:1fr 1fr;margin-bottom:10px}
+.field{margin-bottom:10px}
+.mono{font-family:var(--mono)}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+button{font:inherit;cursor:pointer;border-radius:6px}
+.chip{border:1px solid #d9d9d9;background:#fff;padding:6px 10px;font-size:13px}
+.chip:hover{border-color:var(--ink)}
+.chip::before{content:'+ ';color:var(--blue)}
+.chip.custom{border-style:dashed}
+.line{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;position:relative}
+.line .row{margin-bottom:6px}
+.line .row.q{grid-template-columns:70px 1fr}
+.line input{padding:6px 8px;font-size:13px}
+input.bad{border-color:#c0392b;background:#fdf1ef}
+.rm{position:absolute;top:6px;right:6px;border:0;background:none;color:var(--muted);font-size:16px;line-height:1;padding:4px}
+.rm:hover{color:#c0392b}
+.ghost{border:1px dashed #cfcfcf;background:none;width:100%;padding:8px;color:#555;font-size:13px}
+.ghost:hover{border-color:var(--ink);color:var(--ink)}
+.primary{width:100%;border:0;background:var(--ink);color:#fff;padding:12px;font-size:15px;font-weight:500;margin-top:4px}
+.primary:hover{background:#000}
+.hint{font-family:var(--mono);font-size:11px;color:var(--muted);margin:8px 0 0}
+details{border-top:1px solid var(--line);padding-top:14px;margin-top:22px}
+summary{cursor:pointer;font-weight:500;margin-bottom:12px}
+.preset-set{display:grid;grid-template-columns:120px 1fr 110px;gap:6px;align-items:center;margin-bottom:6px;font-size:12px}
+.preset-set input{padding:6px 8px;font-size:13px}
+.main{padding:32px;display:flex;justify-content:center;align-items:flex-start}
+.stage{width:794px;transform-origin:top left}
+#invoice,.iv-sheet{width:794px;min-height:1123px;background:#fff;color:var(--ink);padding:64px 64px 48px;display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(0,0,0,.06),0 8px 30px rgba(0,0,0,.06);font-family:var(--sans);font-size:14px;line-height:1.5}
+.iv-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px}
+.iv-mark{font-size:48px;font-weight:700;letter-spacing:-0.035em;line-height:1}
+.iv-mark span{color:var(--blue)}
+.iv-tag{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:10px}
+.iv-title{font-size:34px;font-weight:500;letter-spacing:-0.02em;line-height:1;text-align:right}
+.iv-no{font-family:var(--mono);font-size:13px;color:var(--blue);margin-top:10px;text-align:right}
+.iv-meta{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:20px;padding:18px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--line);margin-bottom:18px}
+.k{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:4px}
+.iv-client{font-weight:500;font-size:15px}
+.iv-addr{color:#666;font-size:13px;white-space:pre-line}
+.iv-date{font-family:var(--mono);font-size:13px}
+table.iv{width:100%;border-collapse:collapse}
+table.iv th{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:400;text-align:left;padding:0 0 8px}
+table.iv td{padding:11px 0;border-top:1px solid #eee;vertical-align:baseline}
+table.iv .n{text-align:right;font-family:var(--mono);font-size:13px;white-space:nowrap;padding-left:16px}
+table.iv th.n{font-size:11px}
+.det{color:var(--muted);font-size:13px;margin-left:6px}
+.empty td{color:var(--muted);text-align:center;padding:28px 0}
+.iv-foot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:18px;padding-top:18px;border-top:2px solid var(--ink)}
+.iv-bank{font-family:var(--mono);font-size:12px;color:#666;line-height:1.7;white-space:pre-line}
+.iv-total-k{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right}
+.iv-total{font-size:38px;font-weight:700;letter-spacing:-0.02em;line-height:1.1;text-align:right}
+.iv-notes{margin-top:28px;font-size:13px;color:#555;white-space:pre-line}
+.iv-spacer{flex:1}
+.iv-sign{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:40px}
+.paper-bar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px}
+.edit-btn{border:1px solid #d9d9d9;background:#fff;padding:7px 14px;font-size:13px}
+.edit-btn:hover{border-color:var(--ink)}
+.edit-btn.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.edit-hint{font-family:var(--mono);font-size:11px;color:var(--muted);align-self:center;display:none}
+.editing-on .edit-hint{display:block}
+.edit-only{display:none}
+#invoice.editing .edit-only{display:inline-flex}
+#invoice.editing [data-f]{outline:1px dashed rgba(11,107,196,.35);outline-offset:2px;border-radius:2px;min-width:1.5em;display:inline-block;cursor:text}
+#invoice.editing [data-f]:hover{outline-color:rgba(11,107,196,.7)}
+#invoice.editing [data-f]:focus{outline:2px solid var(--blue);background:#f2f7fd}
+#invoice [data-f].bad{outline:2px solid #c0392b!important;background:#fdf1ef}
+#invoice [data-ph]:empty::before{content:attr(data-ph);color:#bbb}
+#invoice:not(.editing) [data-ph]:not(.ph-always):empty::before{content:none}
+#invoice.editing .iv-addr,#invoice.editing .iv-notes{display:block;min-height:1.5em}
+.row-rm{position:absolute;left:-30px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);font-size:16px;padding:2px 6px}
+.row-rm:hover{color:#c0392b}
+table.iv tr{position:relative}
+table.iv td:first-child{position:relative}
+.paper-add{margin-top:10px;border:1px dashed #cfcfcf;background:none;color:#555;font-size:13px;padding:6px 12px}
+.paper-add:hover{border-color:var(--ink);color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:8px;padding:10px 12px 10px 16px;display:none;gap:14px;align-items:center;font-size:13px;z-index:10}
+.toast.show{display:flex}
+.toast button{border:1px solid #555;background:none;color:#fff;padding:4px 10px;font-size:13px}
+.toast button:hover{border-color:#fff}
+@media (max-width:1000px){.app{grid-template-columns:1fr}.side{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line)}.main{padding:16px;justify-content:flex-start}}
+@page { size: A4; margin: 12mm 0 }
+@media print{
+  html,body{background:#fff}
+  .side,.paper-bar,.edit-only,.toast{display:none!important}
+  #invoice [data-f]{outline:none!important;background:none!important}
+  .app{display:block}
+  .main{padding:0;display:block}
+  .stage{transform:none!important;width:auto;height:auto!important}
+  #invoice{width:210mm;min-height:272mm;box-shadow:none;padding:5mm 17mm 1mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  table.iv tr,.iv-foot,.iv-sign{break-inside:avoid}
+  table.iv thead{display:table-header-group}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <p class="brand">nived<span>.</span> invoices</p>
+    <p class="sub">fill in · check preview · download</p>
+
+    <fieldset>
+      <legend>client</legend>
+      <div class="field"><label for="client">Client name</label><input id="client" placeholder="PT Kopi Senja" autocomplete="off"></div>
+      <div class="field"><label for="address">Address</label><textarea id="address" placeholder="Jl. Kemang Raya 12, Jakarta"></textarea></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>invoice</legend>
+      <div class="field"><label for="number">Invoice number</label><input id="number" class="mono" autocomplete="off"></div>
+      <div class="row">
+        <div><label for="issue">Issued</label><input id="issue" type="date"></div>
+        <div><label for="due">Due</label><input id="due" type="date"></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>items</legend>
+      <div class="presets" id="presets"></div>
+      <div id="lines"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>notes (optional)</legend>
+      <textarea id="notes" placeholder="Shown on the invoice only when filled in"></textarea>
+    </fieldset>
+
+    <button class="primary" id="download" type="button">Download PDF</button>
+    <button class="ghost" id="printBtn" type="button" style="margin-top:8px">Print a paper copy</button>
+    <p class="hint" id="dlHint">Saves an A4 PDF named after the client. The number moves up by one afterwards.</p>
+
+    <details id="settings">
+      <summary>Settings</summary>
+      <fieldset>
+        <legend>preset items (detail · price)</legend>
+        <div id="presetSettings"></div>
+      </fieldset>
+      <fieldset>
+        <legend>bank transfer</legend>
+        <div class="field"><label for="bankName">Bank</label><input id="bankName"></div>
+        <div class="field"><label for="bankAcc">Account number</label><input id="bankAcc" class="mono" placeholder="123 456 7890"></div>
+        <div class="field"><label for="bankHolder">Account holder</label><input id="bankHolder"></div>
+      </fieldset>
+      <fieldset>
+        <legend>numbering</legend>
+        <div class="field"><label for="prefix">Invoice prefix</label><input id="prefix" class="mono"></div>
+      </fieldset>
+      <button type="button" class="ghost" id="resetSettings">Reset settings to defaults</button>
+      <p class="hint">Saved in this browser only.</p>
+    </details>
+  </aside>
+
+  <main class="main">
+    <div class="stage-wrap">
+    <div class="paper-bar"><span class="edit-hint">Click any dashed text to type on the paper</span><button type="button" class="edit-btn" id="newInvoice">New invoice</button><button type="button" class="edit-btn" id="editToggle">Edit on paper</button></div>
+    <div class="stage" id="stage">
+      <article id="invoice" class="iv-sheet">
+        <div class="iv-head">
+          <div><div class="iv-mark">nived<span>.</span></div><div class="iv-tag">design · build · research</div></div>
+          <div><div class="iv-title">Invoice</div><div class="iv-no" id="pNo" data-f="number" data-ph="Invoice number"></div></div>
+        </div>
+        <div class="iv-meta">
+          <div><div class="k">Billed to</div><div class="iv-client ph-always" id="pClient" data-f="client" data-ph="Client name"></div><div class="iv-addr" id="pAddr" data-f="address" data-ph="Client address" data-multi></div></div>
+          <div><div class="k">Issued</div><div class="iv-date" id="pIssue" data-f="issue" data-ph="DD.MM.YYYY"></div></div>
+          <div><div class="k">Due</div><div class="iv-date" id="pDue" data-f="due" data-ph="DD.MM.YYYY"></div></div>
+        </div>
+        <table class="iv">
+          <thead><tr><th>Item</th><th class="n">Qty</th><th class="n">Price</th><th class="n">Amount</th></tr></thead>
+          <tbody id="pLines"></tbody>
+        </table>
+        <div class="edit-only"><button type="button" class="paper-add" id="paperAdd">+ Add line</button></div>
+        <div class="iv-foot">
+          <div class="iv-bank" id="pBank"></div>
+          <div><div class="iv-total-k">Total IDR</div><div class="iv-total" id="pTotal"></div></div>
+        </div>
+        <div class="iv-notes" id="pNotes" data-f="notes" data-ph="Add a note (optional)" data-multi></div>
+        <div class="iv-spacer"></div>
+        <div class="iv-sign"><span>Curiosity first. Intention always.</span><span>nived.studio</span></div>
+      </article>
+    </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="undoBtn">Undo</button></div>
+
+<script>
+const PRESETS = [
+  { key: 'hosting', desc: 'Hosting', detail: '1 year', price: 1200000 },
+  { key: 'domain', desc: 'Domain', detail: 'domain name', price: 250000 },
+  { key: 'maintenance', desc: 'Maintenance', detail: 'monthly', price: 500000 },
+  { key: 'design', desc: 'Design', detail: 'landing page', price: 3500000 },
+  { key: 'reviewcard', desc: 'Review Card', detail: '', price: 150000 },
+  { key: 'grow', desc: 'Grow Package Plan', detail: '', price: 0 },
+  { key: 'bloom', desc: 'Bloom Package Plan', detail: '', price: 0 },
+];
+
+function formatIDR(n) {
+  const s = String(Math.max(0, Math.round(Number(n) || 0)));
+  return s.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function formatRp(n) {
+  return 'Rp ' + formatIDR(n);
+}
+
+function normalizeAmount(s) {
+  return String(s ?? '').trim().replace(/^rp\.?/i, '').replace(/\s+/g, '');
+}
+
+const GROUPED = /^\d{1,3}(?:([.,])\d{3})(?:\1\d{3})*$/;
+const DECIMAL = /^\d+[.,]\d+$/;
+
+function isValidAmount(s) {
+  const str = normalizeAmount(s);
+  return str === '' || /^\d+$/.test(str) || GROUPED.test(str) || DECIMAL.test(str);
+}
+
+function parseAmount(s) {
+  if (typeof s === 'number') return Number.isFinite(s) && s > 0 ? Math.round(s) : 0;
+  const str = normalizeAmount(s);
+  if (/^\d+$/.test(str) || GROUPED.test(str)) return parseInt(str.replace(/[.,]/g, ''), 10);
+  if (DECIMAL.test(str)) return Math.round(parseFloat(str.replace(',', '.')));
+  return 0;
+}
+
+function isValidQty(s) {
+  const str = String(s ?? '').trim();
+  return str === '' || /^\d+(?:[.,]\d+)?$/.test(str);
+}
+
+function parseQty(s) {
+  if (typeof s === 'number') return Number.isFinite(s) && s > 0 ? s : 0;
+  const str = String(s ?? '').trim();
+  return /^\d+(?:[.,]\d+)?$/.test(str) ? parseFloat(str.replace(',', '.')) : 0;
+}
+
+function formatQty(q) {
+  const n = Math.round(Number(q) * 100) / 100;
+  return String(n).replace('.', ',');
+}
+
+function lineAmount(line) {
+  return Math.round(parseQty(line.qty) * parseAmount(line.price));
+}
+
+function visibleLines(lines) {
+  return lines.filter(l => String(l.desc ?? '').trim() !== '' && parseQty(l.qty) > 0);
+}
+
+function computeTotal(lines) {
+  return visibleLines(lines).reduce((sum, l) => sum + lineAmount(l), 0);
+}
+
+function formatDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
+}
+
+function parseDateDMY(str) {
+  const m = /^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/.exec(String(str || '').trim());
+  if (!m) return '';
+  const d = Number(m[1]), mo = Number(m[2]), y = Number(m[3]);
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return '';
+  return dt.toISOString().slice(0, 10);
+}
+
+function addDays(iso, days) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return dt.toISOString().slice(0, 10);
+}
+
+function formatInvoiceNumber(prefix, year, seq) {
+  return `${prefix}-${year}-${String(seq).padStart(3, '0')}`;
+}
+
+function escapeRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function nextInvoiceNumber(current, prefix, issueIso, storedSeq) {
+  const year = Number(String(issueIso).slice(0, 4));
+  const m = new RegExp(`^${escapeRe(prefix)}-(\\d{4})-(\\d+)$`).exec(current || '');
+  let seq;
+  if (m && Number(m[1]) !== year) seq = 1;
+  else if (m) seq = parseInt(m[2], 10) + 1;
+  else seq = (Number(storedSeq) || 0) + 1;
+  return { number: formatInvoiceNumber(prefix, year, seq), seq };
+}
+
+function laterNumber(a, b, prefix) {
+  const re = new RegExp(`^${escapeRe(prefix)}-(\\d{4})-(\\d+)$`);
+  const pa = re.exec(a || ''), pb = re.exec(b || '');
+  if (!pb) return a || '';
+  if (!pa) return b;
+  const ka = Number(pa[1]) * 1e6 + Number(pa[2]);
+  const kb = Number(pb[1]) * 1e6 + Number(pb[2]);
+  return kb > ka ? b : a;
+}
+
+function pdfFileName(invoiceNo, client) {
+  const c = String(client || '')
+    .replace(/[\/\\:]/g, '-')
+    .replace(/[*?"<>|&.]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return c ? `${invoiceNo} ${c}` : invoiceNo;
+}
+
+function invoiceFileName(client, invoiceNo) {
+  const clean = v => String(v || '')
+    .replace(/[\/\\:]/g, ' ')
+    .replace(/[*?"<>|&.,'()]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  const base = clean(client) || clean(invoiceNo);
+  return base ? `${base}-Invoice.pdf` : 'Invoice.pdf';
+}
+
+function pageCuts(total, firstCap, nextCap, candidates) {
+  const sorted = [...candidates].filter(c => c > 0 && c <= total).sort((a, b) => a - b);
+  const cuts = [];
+  let start = 0, cap = firstCap;
+  while (total - start > cap) {
+    const limit = start + cap;
+    let cut = 0;
+    for (const c of sorted) if (c > start && c <= limit) cut = c;
+    if (!cut) cut = limit;
+    cuts.push(cut);
+    start = cut;
+    cap = nextCap;
+  }
+  cuts.push(total);
+  return cuts;
+}
+
+function buildPdf(pages, pageW = 595.28, pageH = 841.89) {
+  const enc = new TextEncoder();
+  const chunks = [];
+  let length = 0;
+  const offsets = [];
+  const push = part => { const b = typeof part === 'string' ? enc.encode(part) : part; chunks.push(b); length += b.length; };
+  const obj = (n, body) => { offsets[n] = length; push(`${n} 0 obj\n`); body(); push('\nendobj\n'); };
+  const fmt = n => (Math.round(n * 100) / 100).toString();
+
+  push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+  const kids = pages.map((_, i) => `${3 + i * 3} 0 R`).join(' ');
+  obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
+  obj(2, () => push(`<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`));
+  pages.forEach((pg, i) => {
+    const pageN = 3 + i * 3, imgN = pageN + 1, contN = pageN + 2;
+    obj(pageN, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${fmt(pageW)} ${fmt(pageH)}] /Resources << /XObject << /Im0 ${imgN} 0 R >> >> /Contents ${contN} 0 R >>`));
+    obj(imgN, () => {
+      push(`<< /Type /XObject /Subtype /Image /Width ${pg.width} /Height ${pg.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${pg.bytes.length} >>\nstream\n`);
+      push(pg.bytes);
+      push('\nendstream');
+    });
+    const content = `q ${fmt(pageW)} 0 0 ${fmt(pageH)} 0 0 cm /Im0 Do Q`;
+    obj(contN, () => push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`));
+  });
+  const count = 3 + pages.length * 3;
+  const xref = length;
+  let table = `xref\n0 ${count}\n0000000000 65535 f \n`;
+  for (let n = 1; n < count; n++) table += String(offsets[n]).padStart(10, '0') + ' 00000 n \n';
+  push(table + `trailer\n<< /Size ${count} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  const out = new Uint8Array(length);
+  let pos = 0;
+  for (const c of chunks) { out.set(c, pos); pos += c.length; }
+  return out;
+}
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.NivedCore = {
+    PRESETS, formatIDR, formatRp, parseAmount, parseQty, isValidAmount, isValidQty, formatQty, laterNumber, lineAmount, visibleLines, computeTotal,
+    formatDate, parseDateDMY, addDays, invoiceFileName, pageCuts, buildPdf, formatInvoiceNumber, nextInvoiceNumber, pdfFileName,
+  };
+}
+</script>
+<script>
+(function () {
+  const C = globalThis.NivedCore;
+  const KEY = 'nived-invoice-v1';
+  const $ = id => document.getElementById(id);
+
+  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }
+
+  const stored = load();
+  function defaultSettings() {
+    const presets = {};
+    C.PRESETS.forEach(p => { presets[p.key] = { detail: p.detail, price: p.price }; });
+    return { bankName: '', bankAcc: '', bankHolder: 'Nived Studio', prefix: 'NVD', presets };
+  }
+  const storedSettings = stored.settings && typeof stored.settings === 'object' ? stored.settings : {};
+  const store = {
+    settings: Object.assign(defaultSettings(), storedSettings, { presets: Object.assign({}, storedSettings.presets || {}) }),
+    lastNumber: stored.lastNumber || '',
+  };
+  C.PRESETS.forEach(p => {
+    const s = store.settings.presets[p.key] || {};
+    store.settings.presets[p.key] = { detail: s.detail ?? p.detail, price: s.price ?? p.price };
+  });
+
+  function todayIso() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function prefix() { return (store.settings.prefix || 'NVD').trim() || 'NVD'; }
+  function matchesPattern(n) { return new RegExp('^' + prefix().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '-\\d{4}-\\d+$').test(n); }
+
+  const state = { lines: [], dueTouched: false, numberTouched: false, editing: false };
+
+  const issue = todayIso();
+  $('issue').value = issue;
+  $('due').value = C.addDays(issue, 14);
+  $('number').value = C.nextInvoiceNumber(store.lastNumber, prefix(), issue, 0).number;
+
+  const presetInputs = {};
+  // presets
+  C.PRESETS.forEach(p => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.textContent = p.desc;
+    b.addEventListener('click', () => {
+      const s = store.settings.presets[p.key];
+      addLine({ desc: p.desc, detail: s.detail, qty: '1', price: C.formatIDR(C.parseAmount(s.price)) });
+    });
+    $('presets').appendChild(b);
+
+    const row = document.createElement('div');
+    row.className = 'preset-set';
+    const name = document.createElement('span'); name.textContent = p.desc;
+    const det = document.createElement('input'); det.value = store.settings.presets[p.key].detail; det.placeholder = 'detail';
+    const pr = document.createElement('input'); pr.className = 'mono'; pr.inputMode = 'numeric';
+    pr.value = C.formatIDR(C.parseAmount(store.settings.presets[p.key].price));
+    det.addEventListener('input', () => { store.settings.presets[p.key].detail = det.value; save(); });
+    pr.addEventListener('input', () => { store.settings.presets[p.key].price = C.parseAmount(pr.value); save(); });
+    pr.addEventListener('blur', () => { pr.value = C.formatIDR(C.parseAmount(pr.value)); });
+    row.append(name, det, pr);
+    presetInputs[p.key] = { det, pr };
+    $('presetSettings').appendChild(row);
+  });
+
+  const customBtn = document.createElement('button');
+  customBtn.type = 'button'; customBtn.className = 'chip custom'; customBtn.textContent = 'Custom';
+  customBtn.addEventListener('click', () => {
+    addLine({ desc: '', detail: '', qty: '1', price: '' });
+    const boxes = $('lines').querySelectorAll('.line');
+    const first = boxes[boxes.length - 1] && boxes[boxes.length - 1].querySelector('input');
+    if (first) first.focus();
+  });
+  $('presets').appendChild(customBtn);
+
+  ['bankName', 'bankAcc', 'bankHolder', 'prefix'].forEach(k => {
+    $(k).value = store.settings[k];
+    $(k).addEventListener('input', () => { store.settings[k] = $(k).value; save(); if (k === 'prefix') refreshNumber(); render(); });
+  });
+
+  function addLine(l) { state.lines.push(l); renderLines(); render(); }
+
+  function renderLines() {
+    const wrap = $('lines');
+    wrap.textContent = '';
+    state.lines.forEach((l, i) => {
+      const box = document.createElement('div'); box.className = 'line';
+      const r1 = document.createElement('div'); r1.className = 'row';
+      const r2 = document.createElement('div'); r2.className = 'row q';
+      const mk = (key, ph, cls, mode) => {
+        const inp = document.createElement('input');
+        inp.value = l[key]; inp.placeholder = ph; inp.setAttribute('aria-label', ph);
+        if (cls) inp.className = cls; if (mode) inp.inputMode = mode;
+        const check = () => {
+          const ok = key === 'price' ? C.isValidAmount(inp.value) : key === 'qty' ? C.isValidQty(inp.value) : true;
+          inp.classList.toggle('bad', !ok);
+          return ok;
+        };
+        inp.addEventListener('input', () => { l[key] = inp.value; check(); render(); });
+        if (key === 'price') inp.addEventListener('blur', () => {
+          if (check() && inp.value.trim() !== '') { inp.value = l.price = C.formatIDR(C.parseAmount(inp.value)); render(); }
+        });
+        check();
+        return inp;
+      };
+      r1.append(mk('desc', 'Item'), mk('detail', 'Detail'));
+      r2.append(mk('qty', 'Qty', 'mono', 'numeric'), mk('price', 'Price (Rp)', 'mono', 'numeric'));
+      const rm = document.createElement('button');
+      rm.type = 'button'; rm.className = 'rm'; rm.textContent = '×'; rm.setAttribute('aria-label', 'Remove line');
+      rm.addEventListener('click', () => { state.lines.splice(i, 1); renderLines(); render(); });
+      box.append(r1, r2, rm);
+      wrap.appendChild(box);
+    });
+  }
+
+  function setText(el, v) {
+    if (el !== document.activeElement && el.textContent !== v) el.textContent = v;
+  }
+  function qtyText(raw) { return C.isValidQty(raw) ? C.formatQty(C.parseQty(raw)) : String(raw); }
+  function priceText(raw) { return C.isValidAmount(raw) ? C.formatIDR(C.parseAmount(raw)) : String(raw); }
+  function shownLines() {
+    return state.lines.map((l, i) => [l, i]).filter(([l]) => state.editing || C.visibleLines([l]).length);
+  }
+  function editable(el, on) {
+    if (on) {
+      el.setAttribute('contenteditable', 'plaintext-only');
+      if (el.contentEditable !== 'plaintext-only') el.setAttribute('contenteditable', 'true');
+      el.spellcheck = false;
+    } else el.removeAttribute('contenteditable');
+  }
+
+  function buildTable() {
+    const body = $('pLines');
+    body.textContent = '';
+    const rows = shownLines();
+    if (!rows.length) {
+      const tr = document.createElement('tr'); tr.className = 'empty';
+      const td = document.createElement('td'); td.colSpan = 4;
+      td.textContent = state.editing ? 'Use + Add line below' : 'Add an item to get started';
+      tr.appendChild(td); body.appendChild(tr);
+      return;
+    }
+    rows.forEach(([l, i]) => {
+      const tr = document.createElement('tr'); tr.dataset.i = i;
+      const t1 = document.createElement('td');
+      const desc = document.createElement('span'); desc.dataset.f = 'desc'; desc.dataset.ph = 'Item';
+      const det = document.createElement('span'); det.className = 'det'; det.dataset.f = 'detail'; det.dataset.ph = 'detail';
+      t1.append(desc, det);
+      if (state.editing) {
+        const rm = document.createElement('button');
+        rm.type = 'button'; rm.className = 'row-rm edit-only'; rm.textContent = '×'; rm.setAttribute('aria-label', 'Remove line');
+        rm.addEventListener('click', () => { state.lines.splice(i, 1); renderLines(); buildTable(); render(); });
+        t1.appendChild(rm);
+      }
+      const cell = (f) => { const td = document.createElement('td'); td.className = 'n'; const sp = document.createElement('span'); if (f) { sp.dataset.f = f; } else { sp.className = 'amt'; } td.appendChild(sp); return td; };
+      tr.append(t1, cell('qty'), cell('price'), cell(null));
+      body.appendChild(tr);
+    });
+    body.querySelectorAll('[data-f]').forEach(el => editable(el, state.editing));
+  }
+
+  function fillTable() {
+    const body = $('pLines');
+    body.querySelectorAll('tr[data-i]').forEach(tr => {
+      const l = state.lines[Number(tr.dataset.i)];
+      if (!l) return;
+      const q = tr.querySelector('[data-f=qty]'), p = tr.querySelector('[data-f=price]');
+      setText(tr.querySelector('[data-f=desc]'), state.editing ? String(l.desc) : String(l.desc).trim());
+      setText(tr.querySelector('[data-f=detail]'), state.editing ? String(l.detail || '') : String(l.detail || '').trim());
+      setText(q, qtyText(l.qty));
+      setText(p, priceText(l.price));
+      q.classList.toggle('bad', !C.isValidQty(l.qty));
+      p.classList.toggle('bad', !C.isValidAmount(l.price));
+      setText(tr.querySelector('.amt'), C.formatIDR(C.lineAmount(l)));
+    });
+  }
+
+  function render() {
+    setText($('pNo'), $('number').value);
+    setText($('pClient'), $('client').value);
+    setText($('pAddr'), $('address').value);
+    setText($('pIssue'), C.formatDate($('issue').value));
+    setText($('pDue'), C.formatDate($('due').value));
+
+    const body = $('pLines');
+    const rows = shownLines();
+    const current = Array.from(body.querySelectorAll('tr[data-i]')).map(tr => tr.dataset.i).join(',');
+    const wanted = rows.map(([, i]) => String(i)).join(',');
+    const emptyShown = !!body.querySelector('tr.empty');
+    if (current !== wanted || (!rows.length && !emptyShown)) buildTable();
+    fillTable();
+
+    $('pTotal').textContent = C.formatRp(C.computeTotal(state.lines));
+    const s = store.settings;
+    $('pBank').textContent = [s.bankName && s.bankAcc ? s.bankName + ' ' + s.bankAcc : (s.bankName || s.bankAcc), s.bankHolder ? 'a.n. ' + s.bankHolder : ''].filter(Boolean).join('\n');
+    setText($('pNotes'), state.editing ? $('notes').value : $('notes').value.trim());
+    fit();
+  }
+
+  // --- editing on the paper
+  function setEditing(on) {
+    state.editing = on;
+    const inv = $('invoice');
+    inv.classList.toggle('editing', on);
+    document.body.classList.toggle('editing-on', on);
+    $('editToggle').classList.toggle('on', on);
+    $('editToggle').textContent = on ? 'Done editing' : 'Edit on paper';
+    inv.querySelectorAll('.iv-head [data-f], .iv-meta [data-f], #pNotes').forEach(el => editable(el, on));
+    if (document.activeElement && inv.contains(document.activeElement)) document.activeElement.blur();
+    buildTable();
+    render();
+  }
+  $('editToggle').addEventListener('click', () => setEditing(!state.editing));
+  $('paperAdd').addEventListener('click', () => {
+    state.lines.push({ desc: '', detail: '', qty: '1', price: '' });
+    renderLines(); render();
+    const last = $('pLines').querySelector('tr[data-i="' + (state.lines.length - 1) + '"] [data-f=desc]');
+    if (last) last.focus();
+  });
+
+  function paperText(el) { return (el.innerText || el.textContent || '').replace(/ /g, ' ').replace(/\n$/, ''); }
+
+  $('invoice').addEventListener('keydown', e => {
+    const el = e.target;
+    if (!state.editing || !el.dataset || !el.dataset.f) return;
+    if (e.key === 'Enter' && !('multi' in el.dataset)) { e.preventDefault(); el.blur(); }
+  });
+  $('invoice').addEventListener('input', e => {
+    const el = e.target;
+    if (!state.editing || !el.dataset || !el.dataset.f) return;
+    const f = el.dataset.f, v = paperText(el);
+    const tr = el.closest('tr[data-i]');
+    if (tr) {
+      const l = state.lines[Number(tr.dataset.i)];
+      l[f] = v;
+      renderLines();
+    } else if (f === 'number') { $('number').value = v; state.numberTouched = true; }
+    else if (f === 'client' || f === 'address' || f === 'notes') { $(f).value = v; }
+    else return; // dates are applied when you leave the field
+    render();
+  });
+  $('invoice').addEventListener('focusout', e => {
+    const el = e.target;
+    if (!state.editing || !el.dataset || !el.dataset.f) return;
+    const f = el.dataset.f;
+    if (f === 'issue' || f === 'due') {
+      const iso = C.parseDateDMY(paperText(el));
+      if (iso) {
+        $(f).value = iso;
+        if (f === 'issue') { if (!state.dueTouched) $('due').value = C.addDays(iso, 14); refreshNumber(); }
+        else state.dueTouched = true;
+      }
+      el.textContent = C.formatDate($(f).value);
+    } else if (f === 'price') {
+      const tr = el.closest('tr[data-i]'); const l = state.lines[Number(tr.dataset.i)];
+      if (C.isValidAmount(l.price) && String(l.price).trim() !== '') { l.price = C.formatIDR(C.parseAmount(l.price)); renderLines(); }
+      el.textContent = priceText(l.price);
+    } else if (f === 'qty') {
+      const tr = el.closest('tr[data-i]'); el.textContent = qtyText(state.lines[Number(tr.dataset.i)].qty);
+    }
+    render();
+  });
+
+  function refreshNumber() {
+    if (state.numberTouched) return;
+    $('number').value = C.nextInvoiceNumber(store.lastNumber, prefix(), $('issue').value || todayIso(), 0).number;
+  }
+  ['client', 'address', 'notes'].forEach(k => $(k).addEventListener('input', render));
+  $('number').addEventListener('input', () => { state.numberTouched = true; render(); });
+  $('issue').addEventListener('input', () => {
+    if (!state.dueTouched && $('issue').value) $('due').value = C.addDays($('issue').value, 14);
+    refreshNumber();
+    render();
+  });
+  $('due').addEventListener('input', () => { state.dueTouched = true; render(); });
+
+  // --- PDF download: draw the invoice onto a canvas, then wrap it in an A4 PDF
+  const PAGE_W = 794, PAGE_H = PAGE_W * 297 / 210, SCALE = 3, TOP_GAP = 56, BOTTOM_GAP = 40;
+
+  function relRect(r, base) { return { x: r.left - base.left, y: r.top - base.top, w: r.width, h: r.height }; }
+
+  function paintNode(ctx, root, base) {
+    const all = [root, ...root.querySelectorAll('*')];
+    all.forEach(el => {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return;
+      const r = relRect(el.getBoundingClientRect(), base);
+      if (cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') {
+        ctx.fillStyle = cs.backgroundColor; ctx.fillRect(r.x, r.y, r.w, r.h);
+      }
+      [['Top', r.x, r.y, r.w, null], ['Bottom', r.x, null, r.w, null], ['Left', r.x, r.y, null, r.h], ['Right', null, r.y, null, r.h]].forEach(([side]) => {
+        const w = parseFloat(cs['border' + side + 'Width']);
+        if (!w || cs['border' + side + 'Style'] === 'none') return;
+        ctx.fillStyle = cs['border' + side + 'Color'];
+        if (side === 'Top') ctx.fillRect(r.x, r.y, r.w, w);
+        if (side === 'Bottom') ctx.fillRect(r.x, r.y + r.h - w, r.w, w);
+        if (side === 'Left') ctx.fillRect(r.x, r.y, w, r.h);
+        if (side === 'Right') ctx.fillRect(r.x + r.w - w, r.y, w, r.h);
+      });
+    });
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    let node;
+    while ((node = walker.nextNode())) {
+      const text = node.nodeValue;
+      if (!text.trim()) continue;
+      const cs = getComputedStyle(node.parentElement);
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      ctx.fillStyle = cs.color;
+      if ('letterSpacing' in ctx) ctx.letterSpacing = cs.letterSpacing === 'normal' ? '0px' : cs.letterSpacing;
+      ctx.textBaseline = 'alphabetic';
+      const m = ctx.measureText('Hg');
+      const asc = m.fontBoundingBoxAscent || parseFloat(cs.fontSize) * 0.8;
+      const desc = m.fontBoundingBoxDescent || parseFloat(cs.fontSize) * 0.2;
+      const re = /\S+/g; let mt;
+      while ((mt = re.exec(text))) {
+        range.setStart(node, mt.index); range.setEnd(node, mt.index + mt[0].length);
+        const rect = range.getClientRects()[0];
+        if (!rect) continue;
+        const r = relRect(rect, base);
+        ctx.fillText(mt[0], r.x, r.y + (r.h - (asc + desc)) / 2 + asc);
+      }
+    }
+  }
+
+  async function renderPages() {
+    if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+    const holder = document.createElement('div');
+    holder.style.cssText = 'position:absolute;left:-20000px;top:0;width:' + PAGE_W + 'px';
+    const clone = $('invoice').cloneNode(true);
+    clone.classList.remove('editing');
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+    clone.querySelectorAll('.edit-only').forEach(el => el.remove());
+    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+    clone.style.boxShadow = 'none';
+    clone.style.minHeight = '0px';
+    holder.appendChild(clone);
+    document.body.appendChild(holder);
+    try {
+      let total = clone.getBoundingClientRect().height;
+      if (total <= PAGE_H) { clone.style.minHeight = PAGE_H + 'px'; total = PAGE_H; }
+      const base = clone.getBoundingClientRect();
+      total = Math.ceil(base.height);
+      const candidates = Array.from(clone.querySelectorAll('tbody tr')).map(tr => tr.getBoundingClientRect().bottom - base.top);
+      const foot = clone.querySelector('.iv-foot');
+      if (foot) candidates.push(foot.getBoundingClientRect().top - base.top);
+      const cuts = total <= Math.ceil(PAGE_H) ? [total] : C.pageCuts(total, PAGE_H - BOTTOM_GAP, PAGE_H - TOP_GAP - BOTTOM_GAP, candidates);
+
+      const full = document.createElement('canvas');
+      full.width = Math.ceil(PAGE_W * SCALE); full.height = Math.ceil(total * SCALE);
+      const fctx = full.getContext('2d');
+      fctx.scale(SCALE, SCALE);
+      fctx.fillStyle = '#ffffff'; fctx.fillRect(0, 0, PAGE_W, total);
+      paintNode(fctx, clone, base);
+
+      const pages = [];
+      let start = 0;
+      for (let i = 0; i < cuts.length; i++) {
+        const end = Math.min(cuts[i], total);
+        const page = document.createElement('canvas');
+        page.width = Math.round(PAGE_W * SCALE); page.height = Math.round(PAGE_H * SCALE);
+        const pctx = page.getContext('2d');
+        pctx.fillStyle = '#ffffff'; pctx.fillRect(0, 0, page.width, page.height);
+        const offset = i === 0 ? 0 : TOP_GAP;
+        const h = Math.min(end - start, PAGE_H - offset);
+        pctx.drawImage(full, 0, start * SCALE, full.width, h * SCALE, 0, offset * SCALE, page.width, h * SCALE);
+        const blob = await new Promise(res => page.toBlob(res, 'image/jpeg', 0.93));
+        pages.push({ bytes: new Uint8Array(await blob.arrayBuffer()), width: page.width, height: page.height });
+        start = end;
+      }
+      return pages;
+    } finally {
+      holder.remove();
+    }
+  }
+
+  function advanceNumber() {
+    const cur = $('number').value.trim();
+    if (matchesPattern(cur)) store.lastNumber = C.laterNumber(store.lastNumber, cur, prefix());
+    save();
+    state.numberTouched = false;
+    refreshNumber();
+    render();
+  }
+
+  $('download').addEventListener('click', async () => {
+    if (state.editing) setEditing(false);
+    const btn = $('download');
+    btn.disabled = true; btn.textContent = 'Preparing PDF…';
+    try {
+      const pages = await renderPages();
+      const blob = new Blob([C.buildPdf(pages)], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = C.invoiceFileName($('client').value, $('number').value.trim());
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      advanceNumber();
+      $('dlHint').textContent = 'Saved ' + a.download + '. Check your Downloads folder.';
+    } catch (e) {
+      $('dlHint').textContent = "Couldn't make the PDF here. Use Print a paper copy and choose Save as PDF.";
+    } finally {
+      btn.disabled = false; btn.textContent = 'Download PDF';
+    }
+  });
+
+  $('printBtn').addEventListener('click', () => {
+    if (state.editing) setEditing(false);
+    const original = document.title;
+    document.title = C.invoiceFileName($('client').value, $('number').value.trim()).replace(/\.pdf$/, '');
+    window.print();
+    setTimeout(() => { document.title = original; }, 1000);
+  });
+
+  // --- new invoice, reset, undo
+  let undoFn = null, toastTimer = null;
+  function showUndo(msg, fn) {
+    undoFn = fn;
+    $('toastMsg').textContent = msg;
+    $('toast').classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 10000);
+  }
+  function hideToast() { $('toast').classList.remove('show'); undoFn = null; }
+  $('undoBtn').addEventListener('click', () => { const fn = undoFn; hideToast(); if (fn) fn(); });
+
+  function snapshotInvoice() {
+    return {
+      client: $('client').value, address: $('address').value, notes: $('notes').value,
+      number: $('number').value, issue: $('issue').value, due: $('due').value,
+      lines: state.lines.map(l => Object.assign({}, l)),
+      dueTouched: state.dueTouched, numberTouched: state.numberTouched,
+    };
+  }
+  function restoreInvoice(snap) {
+    ['client', 'address', 'notes', 'number', 'issue', 'due'].forEach(k => { $(k).value = snap[k]; });
+    state.lines = snap.lines.map(l => Object.assign({}, l));
+    state.dueTouched = snap.dueTouched; state.numberTouched = snap.numberTouched;
+    renderLines(); render();
+  }
+  $('newInvoice').addEventListener('click', () => {
+    const snap = snapshotInvoice();
+    ['client', 'address', 'notes'].forEach(k => { $(k).value = ''; });
+    state.lines = [];
+    state.dueTouched = false; state.numberTouched = false;
+    const t = todayIso();
+    $('issue').value = t; $('due').value = C.addDays(t, 14);
+    refreshNumber();
+    renderLines(); render();
+    showUndo('Started a fresh invoice', () => restoreInvoice(snap));
+  });
+
+  function syncSettingsInputs() {
+    ['bankName', 'bankAcc', 'bankHolder', 'prefix'].forEach(k => { $(k).value = store.settings[k]; });
+    C.PRESETS.forEach(p => {
+      const s = store.settings.presets[p.key], inp = presetInputs[p.key];
+      inp.det.value = s.detail; inp.pr.value = C.formatIDR(C.parseAmount(s.price));
+    });
+  }
+  function applySettings(next) {
+    store.settings = next;
+    save(); syncSettingsInputs(); refreshNumber(); render();
+  }
+  $('resetSettings').addEventListener('click', () => {
+    const snap = JSON.parse(JSON.stringify(store.settings));
+    applySettings(defaultSettings());
+    showUndo('Settings reset to defaults', () => applySettings(snap));
+  });
+
+  function fit() {
+    const stage = $('stage'), main = stage.parentElement;
+    const avail = main.clientWidth - parseFloat(getComputedStyle(main).paddingLeft) - parseFloat(getComputedStyle(main).paddingRight);
+    const scale = Math.min(1, avail / 794);
+    stage.style.transform = 'scale(' + scale + ')';
+    stage.style.height = ($('invoice').offsetHeight * scale) + 'px';
+  }
+  window.addEventListener('resize', fit);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+
+  renderLines();
+  render();
+  fit();
+})();
+</script>
+</body>
+</html>

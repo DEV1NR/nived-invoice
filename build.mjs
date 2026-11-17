@@ -9,4 +9,5 @@ if (!app.includes('<!--CORE-->')) throw new Error('app.html is missing the <!--C
 const out = app.replace('<!--CORE-->', () => `<script>\n${core}</script>`);
 mkdirSync(join(root, 'dist'), { recursive: true });
 writeFileSync(join(root, 'dist/index.html'), out);
+writeFileSync(join(root, 'invoice.html'), out);
 console.log('built dist/index.html');
