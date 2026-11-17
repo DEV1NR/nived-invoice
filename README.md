@@ -4,6 +4,10 @@ A single-page tool for making Nived invoices: fill in the form (or type straight
 
 ## Using it
 
+**Easiest:** open **https://dev1nr.github.io/nived-invoice/**. It always runs the latest version, with nothing to download.
+
+Or work offline:
+
 1. Download **`invoice.html`** from this repo. Click the file, then the download button (↓) at the top right.
 2. Open it in Chrome, Edge or Safari.
 3. The first time, open **Settings** at the bottom left and fill in your bank account and your item prices. They're saved in that browser.
@@ -17,11 +21,11 @@ A single-page tool for making Nived invoices: fill in the form (or type straight
 | Undo | Appears for 10 seconds after New invoice or a reset |
 | Print a paper copy | Opens the print window; untick "Headers and footers" |
 
-Settings and the invoice counter live in each person's own browser. Always open the tool in the same browser.
+Settings and the invoice counter live in each person's own browser. The web link and a downloaded copy count as separate places, so stick to one and always open it in the same browser.
 
 ## Getting updates
 
-When a new version is pushed here, download `invoice.html` again and replace your old copy. Your saved settings stay as long as you open it in the same browser.
+If you use the link above, updates appear on their own. Just reload the page. If you use a downloaded copy, download `invoice.html` again when a new version is pushed here and replace your old copy. Your saved settings stay as long as you open it in the same browser.
 
 ## For developers
 
